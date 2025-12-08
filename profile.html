@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
 </head>
 <body>
     <!-- Web Block Overlay -->
@@ -594,9 +595,50 @@
         // ===== STORY EDITOR =====
         let currentStoryBg = 'green';
         
-        function openStoryEditor() {
-            // Заполняем список желаний
-            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+        async function openStoryEditor() {
+            // Заполняем список желаний - сначала пробуем из Supabase
+            let wishes = [];
+            const sb = window.supabaseClient;
+            
+            if (sb && state.userId !== 'demo') {
+                try {
+                    // Ищем пользователя по telegram_id
+                    const { data: user } = await sb
+                        .from('users')
+                        .select('id')
+                        .eq('telegram_id', parseInt(state.userId))
+                        .single();
+                    
+                    if (user) {
+                        const { data } = await sb
+                            .from('wishes')
+                            .select('*')
+                            .eq('user_id', user.id)
+                            .order('created_at', { ascending: false });
+                        
+                        if (data && data.length > 0) {
+                            wishes = data.map(w => ({
+                                id: w.id,
+                                name: w.name,
+                                price: w.price,
+                                currency: w.currency || '₽',
+                                reserved: w.reserved
+                            }));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Load wishes for story error:', err);
+                }
+            }
+            
+            // Fallback на localStorage
+            if (wishes.length === 0) {
+                wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            }
+            
+            // Сохраняем для использования в canvas
+            window.storyWishes = wishes;
+            
             const select = document.getElementById('storyWishSelect');
             select.innerHTML = '<option value="">-- Без желания --</option>' + 
                 wishes.filter(w => !w.reserved).map(w => `<option value="${w.id}">${w.name}</option>`).join('');
@@ -665,8 +707,8 @@
             
             // Желание
             const wishId = document.getElementById('storyWishSelect').value;
-            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
-            const wish = wishes.find(w => w.id === wishId);
+            const wishes = window.storyWishes || JSON.parse(localStorage.getItem('wishes') || '[]');
+            const wish = wishes.find(w => w.id === wishId || w.id === parseInt(wishId));
             
             if (wish) {
                 ctx.font = '60px serif';
@@ -740,38 +782,40 @@
         }
         
         function shareStoryToTelegram() {
-            const botUsername = window.BOT_USERNAME || 'giftl_robot';
-            const botUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
-            
-            // Проверяем поддержку Stories
-            const version = tg?.version || '0.0';
-            const [major, minor] = version.split('.').map(Number);
-            const supportsStory = major > 7 || (major === 7 && minor >= 8);
-            
-            if (!tg || !supportsStory) {
-                // Fallback - скачиваем картинку
-                downloadStoryImage();
-                showToast('Добавь картинку в Stories вручную');
-                return;
-            }
-            
-            // Генерируем полноразмерную картинку для Stories (720x1280)
-            const canvas = document.createElement('canvas');
-            canvas.width = 720;
-            canvas.height = 1280;
-            const ctx = canvas.getContext('2d');
-            
-            // Копируем превью с масштабированием
-            const preview = document.getElementById('storyCanvas');
-            ctx.drawImage(preview, 0, 0, 720, 1280);
-            
             try {
-                const base64 = canvas.toDataURL('image/png');
+                const botUsername = window.BOT_USERNAME || 'giftl_robot';
+                const storyBotUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
+                
+                // Проверяем поддержку Stories
+                const version = tg?.version || '0.0';
+                const versionParts = version.split('.').map(Number);
+                const major = versionParts[0] || 0;
+                const minor = versionParts[1] || 0;
+                const supportsStory = major > 7 || (major === 7 && minor >= 8);
+                
+                if (!tg || !supportsStory) {
+                    // Fallback - скачиваем картинку
+                    downloadStoryImage();
+                    showToast('Добавь картинку в Stories вручную');
+                    return;
+                }
+                
+                // Генерируем полноразмерную картинку для Stories (720x1280)
+                const fullCanvas = document.createElement('canvas');
+                fullCanvas.width = 720;
+                fullCanvas.height = 1280;
+                const fullCtx = fullCanvas.getContext('2d');
+                
+                // Копируем превью с масштабированием
+                const preview = document.getElementById('storyCanvas');
+                fullCtx.drawImage(preview, 0, 0, 720, 1280);
+                
+                const base64 = fullCanvas.toDataURL('image/png');
                 
                 tg.shareToStory(base64, {
                     text: '🎁 Мой вишлист в Giftly!',
                     widget_link: {
-                        url: botUrl,
+                        url: storyBotUrl,
                         name: 'Открыть вишлист'
                     }
                 });
@@ -779,7 +823,7 @@
                 closeStoryModal();
             } catch (e) {
                 console.error('Story error:', e);
-                showToast('Ошибка: ' + e.message);
+                showToast('Ошибка: ' + (e.message || 'неизвестная'));
             }
         }
 
@@ -793,9 +837,17 @@
         }
         
         init();
+        
+        // Проверяем параметр openStory в URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('openStory') === '1') {
+            // Убираем параметр из URL
+            window.history.replaceState({}, '', window.location.pathname);
+            // Открываем редактор Stories с небольшой задержкой
+            setTimeout(() => openStoryEditor(), 300);
+        }
     </script>
 
-    <script src="config.js"></script>
     <style>
         .privacy-check { color: #667eea; font-weight: bold; }
     </style>

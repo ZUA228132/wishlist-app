@@ -269,6 +269,7 @@ async function handleSubmit(e) {
                 console.log('Create wish result:', newWish, error);
                 
                 if (newWish) {
+                    const isFirstWish = state.wishes.length === 0;
                     state.wishes.unshift({
                         id: newWish.id,
                         ...wishData,
@@ -277,6 +278,11 @@ async function handleSubmit(e) {
                     });
                     showToast('✓ Добавлено');
                     confetti();
+                    
+                    // Показываем модалку после первого желания
+                    if (isFirstWish) {
+                        setTimeout(() => showFirstWishModal(), 500);
+                    }
                 } else {
                     console.error('Create wish error:', error);
                     showToast('Ошибка: ' + (error?.message || 'неизвестная'));
@@ -289,6 +295,7 @@ async function handleSubmit(e) {
     } else {
         console.log('No supabase, saving to localStorage. userId:', state.userId, 'sb:', !!sb);
         // Fallback на localStorage
+        const isFirstWish = !id && state.wishes.length === 0;
         const localData = {
             id: id || genId(),
             ...wishData,
@@ -304,6 +311,11 @@ async function handleSubmit(e) {
             state.wishes.unshift(localData);
             showToast('✓ Добавлено');
             confetti();
+            
+            // Показываем модалку после первого желания
+            if (isFirstWish) {
+                setTimeout(() => showFirstWishModal(), 500);
+            }
         }
         saveLocal();
     }
@@ -385,3 +397,55 @@ function confetti() {
         }, i * 30);
     }
 }
+
+// Модалка первого желания
+function showFirstWishModal() {
+    // Создаём модалку
+    const modal = document.createElement('div');
+    modal.id = 'firstWishModal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeFirstWishModal()"></div>
+        <div class="modal-content" style="text-align: center; padding: 32px 24px;">
+            <div style="font-size: 80px; margin-bottom: 16px;">🎉</div>
+            <h2 style="color: white; margin-bottom: 12px; font-size: 24px;">Первое желание есть!</h2>
+            <p style="color: rgba(255,255,255,0.7); margin-bottom: 24px; font-size: 16px;">
+                Хочешь поделиться своим вишлистом в Stories?
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button onclick="closeFirstWishModal()" style="
+                    padding: 14px 24px;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 12px;
+                    color: white;
+                    font-size: 16px;
+                    cursor: pointer;
+                ">Позже</button>
+                <button onclick="goToStoryEditor()" style="
+                    padding: 14px 24px;
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    border: none;
+                    border-radius: 12px;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">📸 Да, создать!</button>
+            </div>
+        </div>
+    `;
+    modal.className = 'modal active';
+    document.body.appendChild(modal);
+    haptic.success();
+}
+
+window.closeFirstWishModal = function() {
+    const modal = document.getElementById('firstWishModal');
+    if (modal) modal.remove();
+};
+
+window.goToStoryEditor = function() {
+    closeFirstWishModal();
+    // Переходим на страницу профиля с открытием редактора Stories
+    window.location.href = 'profile.html?openStory=1';
+};
