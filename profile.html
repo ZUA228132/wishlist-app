@@ -312,15 +312,17 @@
         }
 
         function shareProfile() {
-            const url = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+            // Ссылка на бота с параметром для открытия вишлиста
+            const botUsername = window.BOT_USERNAME || 'giftly_wishlist_bot';
+            const botUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
             const text = '🎁 Мой вишлист в Giftly!';
             
             if (tg) {
-                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(text)}`);
             } else if (navigator.share) {
-                navigator.share({ title: 'Giftly', text, url });
+                navigator.share({ title: 'Giftly', text, url: botUrl });
             } else {
-                navigator.clipboard.writeText(url);
+                navigator.clipboard.writeText(botUrl);
                 showToast('✓ Ссылка скопирована');
             }
         }

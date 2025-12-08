@@ -20,8 +20,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Конфигурация
-BOT_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
-WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://your-domain.com/wishlist-app')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '8464473630:AAECaHY01t2lwqlKk33RlfdZrKPAJwWz_NU')
+WEBAPP_URL = os.getenv('WEBAPP_URL', 'https://wishlist-app-vert.vercel.app')
 
 # Простое хранилище данных (в продакшене используйте базу данных)
 DATA_FILE = 'data.json'

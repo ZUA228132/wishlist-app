@@ -1,3 +1,7 @@
+// Bot Configuration
+// Замени на username своего бота (без @)
+const BOT_USERNAME = 'giftl_robot';
+
 // Supabase Configuration
 // Замени на свои данные из Supabase Dashboard
 const SUPABASE_URL = 'https://vmyzknraixtqvsceaujd.supabase.co';
@@ -169,3 +173,4 @@ const db = {
 // Export for use
 window.db = db;
 window.SUPABASE_URL = SUPABASE_URL;
+window.BOT_USERNAME = BOT_USERNAME;
