@@ -44,6 +44,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
     user = update.effective_user
     
+    # Сохраняем пользователя в базу
+    db = load_data()
+    user_id = str(user.id)
+    if user_id not in db['users']:
+        db['users'][user_id] = {
+            'name': user.first_name,
+            'username': user.username,
+            'wishes': [],
+            'joined': str(update.message.date)
+        }
+        save_data(db)
+    
     # Проверяем параметры (для deep linking)
     args = context.args
     
@@ -166,6 +178,137 @@ async def share_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(text, reply_markup=reply_markup)
+
+# Админские команды
+ADMIN_ID = 7086128174
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Админ-панель в боте"""
+    user = update.effective_user
+    if user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Нет доступа")
+        return
+    
+    db = load_data()
+    users_count = len(db.get('users', {}))
+    groups_count = len(db.get('groups', {}))
+    
+    keyboard = [
+        [InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")],
+        [InlineKeyboardButton("👥 Пользователи", callback_data="admin_users")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        f"⚙️ Админ-панель\n\n"
+        f"👥 Пользователей: {users_count}\n"
+        f"🎅 Групп Санты: {groups_count}",
+        reply_markup=reply_markup
+    )
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Рассылка сообщения всем пользователям"""
+    user = update.effective_user
+    if user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Нет доступа")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "📢 Использование:\n"
+            "/broadcast Текст сообщения\n\n"
+            "Или ответьте на фото с командой /broadcast для рассылки с фото"
+        )
+        return
+    
+    message_text = ' '.join(context.args)
+    db = load_data()
+    users = db.get('users', {})
+    
+    sent = 0
+    failed = 0
+    
+    # Проверяем есть ли фото в ответе
+    photo = None
+    if update.message.reply_to_message and update.message.reply_to_message.photo:
+        photo = update.message.reply_to_message.photo[-1].file_id
+    
+    await update.message.reply_text(f"⏳ Начинаю рассылку {len(users)} пользователям...")
+    
+    for user_id in users.keys():
+        try:
+            if photo:
+                await context.bot.send_photo(
+                    chat_id=int(user_id),
+                    photo=photo,
+                    caption=message_text
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=int(user_id),
+                    text=message_text
+                )
+            sent += 1
+        except Exception as e:
+            logger.error(f"Failed to send to {user_id}: {e}")
+            failed += 1
+    
+    await update.message.reply_text(
+        f"✅ Рассылка завершена!\n\n"
+        f"📨 Отправлено: {sent}\n"
+        f"❌ Ошибок: {failed}"
+    )
+
+async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка кнопок админ-панели"""
+    query = update.callback_query
+    user = query.from_user
+    
+    if user.id != ADMIN_ID:
+        await query.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    await query.answer()
+    data = query.data
+    db = load_data()
+    
+    if data == "admin_broadcast":
+        await query.edit_message_text(
+            "📢 Рассылка\n\n"
+            "Используйте команду:\n"
+            "/broadcast Текст сообщения\n\n"
+            "Для рассылки с фото - ответьте на фото командой /broadcast"
+        )
+    
+    elif data == "admin_users":
+        users = db.get('users', {})
+        if not users:
+            await query.edit_message_text("👥 Пользователей пока нет")
+            return
+        
+        text = "👥 Пользователи:\n\n"
+        for uid, udata in list(users.items())[:20]:  # Первые 20
+            name = udata.get('name', 'Без имени')
+            wishes = len(udata.get('wishes', []))
+            text += f"• {name} (ID: {uid}) - {wishes} желаний\n"
+        
+        if len(users) > 20:
+            text += f"\n... и ещё {len(users) - 20}"
+        
+        await query.edit_message_text(text)
+    
+    elif data == "admin_stats":
+        users = db.get('users', {})
+        groups = db.get('groups', {})
+        total_wishes = sum(len(u.get('wishes', [])) for u in users.values())
+        
+        await query.edit_message_text(
+            f"📊 Статистика\n\n"
+            f"👥 Пользователей: {len(users)}\n"
+            f"🎁 Всего желаний: {total_wishes}\n"
+            f"🎅 Групп Санты: {len(groups)}"
+        )
 
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка данных из WebApp"""
@@ -325,6 +468,11 @@ def main():
     application.add_handler(CommandHandler("wishlist", wishlist_command))
     application.add_handler(CommandHandler("santa", santa_command))
     application.add_handler(CommandHandler("share", share_command))
+    
+    # Админские команды
+    application.add_handler(CommandHandler("admin", admin_command))
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(CallbackQueryHandler(admin_callback, pattern="^admin_"))
     
     # Обработчик данных из WebApp
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))

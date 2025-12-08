@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Story Image Generator</title>
+</head>
+<body style="margin:0; display:flex; align-items:center; justify-content:center; min-height:100vh; background:#1a2f4a;">
+    <canvas id="canvas" width="720" height="1280"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Градиентный фон
+        const gradient = ctx.createLinearGradient(0, 0, 0, 1280);
+        gradient.addColorStop(0, '#165B33');
+        gradient.addColorStop(0.5, '#146B3A');
+        gradient.addColorStop(1, '#0B3D2E');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 720, 1280);
+        
+        // Декоративные круги
+        ctx.globalAlpha = 0.1;
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(100, 200, 150, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(620, 1100, 200, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        
+        // Заголовок
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 64px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Giftly 🎁', 360, 300);
+        
+        // Подзаголовок
+        ctx.font = '32px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillText('Мой вишлист', 360, 370);
+        
+        // Карточка
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        roundRect(ctx, 110, 450, 500, 350, 30);
+        ctx.fill();
+        
+        // Мишка
+        ctx.font = '150px serif';
+        ctx.fillText('🐻‍❄️', 360, 680);
+        
+        // Текст в карточке
+        ctx.fillStyle = 'white';
+        ctx.font = '28px -apple-system, sans-serif';
+        ctx.fillText('Создай свой список желаний!', 360, 770);
+        
+        // CTA кнопка
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        roundRect(ctx, 160, 900, 400, 70, 35);
+        ctx.fill();
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 26px -apple-system, sans-serif';
+        ctx.fillText('Открыть вишлист →', 360, 945);
+        
+        // Снежинки
+        ctx.font = '40px serif';
+        ctx.globalAlpha = 0.3;
+        ctx.fillText('❄️', 80, 500);
+        ctx.fillText('❄️', 640, 400);
+        ctx.fillText('⭐', 100, 900);
+        ctx.fillText('✨', 620, 800);
+        ctx.fillText('🎄', 80, 1150);
+        ctx.fillText('🎁', 640, 1100);
+        ctx.globalAlpha = 1;
+        
+        // Футер
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = '24px -apple-system, sans-serif';
+        ctx.fillText('@giftl_robot', 360, 1200);
+        
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+        
+        // Скачать как PNG
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.download = 'story-image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }, 500);
+    </script>
+</body>
+</html>

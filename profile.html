@@ -112,10 +112,18 @@
                     <span class="list-arrow">›</span>
                 </div>
                 <div class="list-item" id="menuStory">
-                    <div class="list-icon" style="background: linear-gradient(135deg, #c41e3a, #ff6b6b); background-size: 100%;">📸</div>
+                    <div class="list-icon" style="background: linear-gradient(135deg, #c41e3a, #ff6b6b);">�</div>
                     <div class="list-content">
                         <div class="list-title">Поделиться в Stories</div>
                         <div class="list-subtitle">Опубликовать в историях Telegram</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+                <div class="list-item" id="menuChat">
+                    <div class="list-icon" style="background: linear-gradient(135deg, #007aff, #5ac8fa);">💬</div>
+                    <div class="list-content">
+                        <div class="list-title">Общий чат</div>
+                        <div class="list-subtitle">Присоединиться к сообществу</div>
                     </div>
                     <span class="list-arrow">›</span>
                 </div>
@@ -307,6 +315,12 @@
                 shareToStory();
             };
             
+            document.getElementById('menuChat').onclick = () => {
+                haptic.light();
+                if (tg) tg.openTelegramLink('https://t.me/giftly_chat');
+                else window.open('https://t.me/giftly_chat', '_blank');
+            };
+            
             document.getElementById('menuPrivacy').onclick = () => {
                 haptic.light();
                 openPrivacyModal();
@@ -342,34 +356,37 @@
             const botUsername = window.BOT_USERNAME || 'giftl_robot';
             const botUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
             
-            // Проверяем поддержку shareToStory
-            if (tg && typeof tg.shareToStory === 'function') {
-                try {
-                    // Используем простой медиа URL вместо canvas
-                    // shareToStory требует URL изображения, а не base64
-                    showToast('📸 Открываю Stories...');
-                    
-                    // Telegram shareToStory принимает media_url
-                    tg.shareToStory('https://wishlist-app-vert.vercel.app/story-bg.png', {
-                        widget_link: {
-                            url: botUrl,
-                            name: 'Открыть вишлист'
-                        }
-                    });
-                    haptic.success();
-                } catch (e) {
-                    console.error('Story share error:', e);
-                    // Fallback - обычный шеринг
-                    shareProfile();
-                    showToast('Stories недоступны, открыт обычный шеринг');
-                }
-            } else {
-                // Fallback - обычный шеринг
-                shareProfile();
-                showToast('Stories недоступны в этой версии Telegram');
+            // Проверяем версию Telegram (shareToStory доступен с версии 7.8)
+            const version = tg?.version || '0.0';
+            const [major, minor] = version.split('.').map(Number);
+            const supportsStory = major > 7 || (major === 7 && minor >= 8);
+            
+            if (!tg || !supportsStory) {
+                showToast('Обновите Telegram для Stories');
+                return;
+            }
+            
+            showToast('📸 Создаём историю...');
+            
+            // Используем публичный URL изображения
+            // shareToStory требует media_url - прямую ссылку на изображение
+            const storyImageUrl = 'https://wishlist-app-vert.vercel.app/story-image.png';
+            
+            try {
+                tg.shareToStory(storyImageUrl, {
+                    text: '🎁 Мой вишлист в Giftly!\n\nСоздай свой список желаний 🎄',
+                    widget_link: {
+                        url: botUrl,
+                        name: 'Открыть вишлист'
+                    }
+                });
+                haptic.success();
+            } catch (e) {
+                console.error('Story error:', e);
+                showToast('Ошибка публикации');
             }
         }
-
+        
         function shareProfile() {
             // Ссылка на бота с параметром для открытия вишлиста
             const botUsername = window.BOT_USERNAME || 'giftly_wishlist_bot';
