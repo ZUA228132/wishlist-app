@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     document.getElementById('addWishBtn').onclick = () => { haptic.medium(); openAddModal(); };
     document.getElementById('wishForm').onsubmit = handleSubmit;
+    setupUrlInput();
 });
 
 // Инициализация пользователя в Supabase
@@ -215,9 +216,13 @@ async function handleSubmit(e) {
     const preview = document.getElementById('photoPreview');
     const photoUrl = preview.style.backgroundImage.replace(/url\(['"]?([^'"]+)['"]?\)/, '$1') || null;
     
+    // Очищаем URL от мусора
+    const rawUrl = document.getElementById('wishUrl').value.trim();
+    const cleanUrl = extractUrl(rawUrl);
+    
     const wishData = {
         name: document.getElementById('wishName').value.trim(),
-        url: document.getElementById('wishUrl').value.trim(),
+        url: cleanUrl,
         price: document.getElementById('wishPrice').value || null,
         currency: document.getElementById('wishCurrency').value,
         description: document.getElementById('wishDescription').value.trim(),
@@ -377,6 +382,127 @@ window.handlePhoto = function(input) {
 };
 
 
+
+// Извлечение URL из текста с "мусором"
+function extractUrl(text) {
+    if (!text) return '';
+    // Ищем URL в тексте
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const match = text.match(urlRegex);
+    return match ? match[0] : text;
+}
+
+// Определение магазина по URL
+function detectStore(url) {
+    if (!url) return null;
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('wildberries.ru')) return 'wildberries';
+    if (lowerUrl.includes('ozon.ru')) return 'ozon';
+    if (lowerUrl.includes('aliexpress')) return 'aliexpress';
+    if (lowerUrl.includes('amazon.')) return 'amazon';
+    if (lowerUrl.includes('lamoda.ru')) return 'lamoda';
+    if (lowerUrl.includes('dns-shop.ru')) return 'dns';
+    if (lowerUrl.includes('mvideo.ru')) return 'mvideo';
+    if (lowerUrl.includes('eldorado.ru')) return 'eldorado';
+    if (lowerUrl.includes('citilink.ru')) return 'citilink';
+    return null;
+}
+
+// Обработчик вставки/ввода URL
+function setupUrlInput() {
+    const urlInput = document.getElementById('wishUrl');
+    if (!urlInput) return;
+    
+    // При вставке - очищаем URL
+    urlInput.addEventListener('paste', (e) => {
+        setTimeout(() => {
+            const rawText = urlInput.value;
+            const cleanUrl = extractUrl(rawText);
+            if (cleanUrl !== rawText) {
+                urlInput.value = cleanUrl;
+                showToast('✓ Ссылка очищена');
+            }
+            // Пробуем получить инфо о товаре
+            if (cleanUrl.startsWith('http')) {
+                tryFetchProductInfo(cleanUrl);
+            }
+        }, 100);
+    });
+    
+    // При потере фокуса тоже очищаем
+    urlInput.addEventListener('blur', () => {
+        const rawText = urlInput.value;
+        const cleanUrl = extractUrl(rawText);
+        if (cleanUrl !== rawText) {
+            urlInput.value = cleanUrl;
+        }
+    });
+}
+
+// Попытка получить информацию о товаре
+async function tryFetchProductInfo(url) {
+    const store = detectStore(url);
+    if (!store) return;
+    
+    const nameInput = document.getElementById('wishName');
+    const priceInput = document.getElementById('wishPrice');
+    
+    // Показываем что загружаем
+    if (!nameInput.value) {
+        nameInput.placeholder = '⏳ Загрузка...';
+    }
+    
+    try {
+        // Используем бесплатный API для получения метаданных
+        const response = await fetch(`https://api.microlink.io?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.data) {
+            const { title, image, description } = data.data;
+            
+            // Заполняем название если пустое
+            if (title && !nameInput.value) {
+                // Очищаем название от лишнего
+                let cleanTitle = title
+                    .replace(/купить.*$/i, '')
+                    .replace(/- Wildberries.*$/i, '')
+                    .replace(/- OZON.*$/i, '')
+                    .replace(/\|.*$/, '')
+                    .replace(/цена.*$/i, '')
+                    .trim();
+                
+                if (cleanTitle.length > 100) {
+                    cleanTitle = cleanTitle.substring(0, 100) + '...';
+                }
+                
+                nameInput.value = cleanTitle;
+                nameInput.placeholder = 'Название';
+                haptic.light();
+            }
+            
+            // Заполняем фото если есть
+            if (image?.url) {
+                const preview = document.getElementById('photoPreview');
+                if (!preview.classList.contains('has-image')) {
+                    preview.style.backgroundImage = `url(${image.url})`;
+                    preview.classList.add('has-image');
+                }
+            }
+            
+            // Описание
+            const descInput = document.getElementById('wishDescription');
+            if (description && !descInput.value && description.length < 200) {
+                // Не заполняем автоматически, но можно раскомментировать
+                // descInput.value = description;
+            }
+            
+            showToast('✓ Данные загружены');
+        }
+    } catch (err) {
+        console.log('Fetch product info error:', err);
+        nameInput.placeholder = 'Название';
+    }
+}
 
 // Utils
 function saveLocal() { localStorage.setItem('wishes', JSON.stringify(state.wishes)); }
