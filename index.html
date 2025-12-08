@@ -77,9 +77,15 @@
                 <div class="garland-light"></div>
                 <div class="garland-light"></div>
             </div>
-            <div class="header-content">
-                <span class="mascot">🐻‍❄️</span>
-                <h1>Giftly</h1>
+            <div class="header-content" style="width: 100%; justify-content: space-between; padding: 0 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="mascot" style="font-size: 28px;">🐻‍❄️</span>
+                    <h1 style="font-size: 20px;">Giftly</h1>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="header-btn" onclick="location.href='profile.html?openStory=1'" title="Поделиться в Stories">📸</button>
+                    <button class="header-btn header-btn-primary" id="addWishBtn" title="Добавить желание">+</button>
+                </div>
             </div>
         </header>
 
@@ -89,15 +95,10 @@
             <div class="empty-state" id="emptyState">
                 <div class="empty-icon mascot mascot-large">🐻‍❄️</div>
                 <h3>Пока пусто</h3>
-                <p>Мишка ждёт твоё первое желание! 🎁</p>
+                <p style="margin-bottom: 20px;">Нажми на <span style="background: #34c759; color: white; padding: 2px 8px; border-radius: 6px; font-weight: 600;">+</span> в шапке и добавь своё первое желание!</p>
+                <p style="color: #8e8e93; font-size: 14px;">Его обязательно кто-то исполнит ✨</p>
             </div>
         </div>
-
-        <!-- Story FAB - переход в профиль для создания истории -->
-        <button class="story-fab" id="storyBtn" onclick="location.href='profile.html?openStory=1'">📸</button>
-
-        <!-- Add FAB -->
-        <button class="fab" id="addWishBtn">+</button>
 
         <!-- Add Modal -->
         <div class="modal" id="addModal">

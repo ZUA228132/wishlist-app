@@ -139,8 +139,58 @@ function render() {
         const id = card.dataset.id;
         card.querySelector('.btn-edit')?.addEventListener('click', (e) => { e.stopPropagation(); haptic.light(); editWish(id); });
         card.querySelector('.btn-delete')?.addEventListener('click', (e) => { e.stopPropagation(); haptic.medium(); deleteWish(id); });
+        card.querySelector('.btn-share')?.addEventListener('click', (e) => { e.stopPropagation(); haptic.light(); showShareModal(); });
     });
 }
+
+// Модалка "Поделиться"
+function showShareModal() {
+    // Создаём модалку если её нет
+    let modal = document.getElementById('shareInfoModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'shareInfoModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="closeShareModal()"></div>
+            <div class="modal-content" style="text-align: center; padding: 32px 24px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">📤</div>
+                <h2 style="color: var(--text-primary); margin-bottom: 12px; font-size: 22px;">Поделиться вишлистом</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 15px; line-height: 1.5;">
+                    Чтобы поделиться своим вишлистом с друзьями, перейди в <strong>Профиль</strong> и нажми «Поделиться» или «Поделиться в Stories»
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button onclick="closeShareModal()" style="
+                        padding: 14px 24px;
+                        background: var(--bg-tertiary);
+                        border: none;
+                        border-radius: 12px;
+                        color: var(--text-primary);
+                        font-size: 16px;
+                        cursor: pointer;
+                    ">Понятно</button>
+                    <button onclick="closeShareModal(); location.href='profile.html'" style="
+                        padding: 14px 24px;
+                        background: var(--ios-green);
+                        border: none;
+                        border-radius: 12px;
+                        color: white;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">👤 В профиль</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    modal.classList.add('active');
+}
+
+window.closeShareModal = function() {
+    const modal = document.getElementById('shareInfoModal');
+    if (modal) modal.classList.remove('active');
+};
 
 function createCard(wish) {
     const img = wish.photo 
@@ -166,11 +216,13 @@ function createCard(wish) {
                 ${desc}
                 ${link}
                 ${reservedBadge}
-                ${!wish.reserved ? `
                 <div class="card-actions">
-                    <button class="btn btn-secondary btn-edit">✏️ Изменить</button>
+                    ${!wish.reserved ? `
+                    <button class="btn btn-secondary btn-edit">✏️</button>
                     <button class="btn btn-danger btn-delete">🗑️</button>
-                </div>` : ''}
+                    ` : ''}
+                    <button class="btn btn-secondary btn-share" style="flex: 1;">📤 Поделиться</button>
+                </div>
             </div>
         </div>
     `;
@@ -445,12 +497,6 @@ async function tryFetchProductInfo(url) {
     if (!store) return;
     
     const nameInput = document.getElementById('wishName');
-    const priceInput = document.getElementById('wishPrice');
-    
-    // Показываем что загружаем
-    if (!nameInput.value) {
-        nameInput.placeholder = '⏳ Загрузка...';
-    }
     
     try {
         // Используем бесплатный API для получения метаданных
@@ -476,7 +522,6 @@ async function tryFetchProductInfo(url) {
                 }
                 
                 nameInput.value = cleanTitle;
-                nameInput.placeholder = 'Название';
                 haptic.light();
             }
             
@@ -500,7 +545,6 @@ async function tryFetchProductInfo(url) {
         }
     } catch (err) {
         console.log('Fetch product info error:', err);
-        nameInput.placeholder = 'Название';
     }
 }
 
