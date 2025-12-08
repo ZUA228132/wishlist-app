@@ -82,44 +82,105 @@
         };
 
         const params = new URLSearchParams(window.location.search);
-        const ownerId = params.get('user');
-        const ownerName = params.get('name');
-        const ownerPhoto = params.get('photo');
-        const viewerId = tg?.initDataUnsafe?.user?.id || 'anon_' + Math.random().toString(36).substr(2, 9);
+        const ownerTelegramId = params.get('user'); // telegram_id владельца
+        const viewerId = tg?.initDataUnsafe?.user?.id || 'anon_' + Math.random().toString(36).substring(2, 9);
 
         let wishes = [];
         let selectedId = null;
+        let ownerUserId = null; // UUID владельца в Supabase
 
         const $ = id => document.getElementById(id);
         const giftModal = $('giftModal');
         const toast = $('toast');
 
-        function init() {
-            // Показываем имя и фото владельца
-            if (ownerName) {
-                $('userName').textContent = decodeURIComponent(ownerName);
-            }
-            if (ownerPhoto) {
-                const avatar = $('userAvatar');
-                avatar.innerHTML = `<img src="${decodeURIComponent(ownerPhoto)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-                avatar.classList.remove('mascot');
-            }
-            
-            const stored = localStorage.getItem('wishes');
-            
-            if (stored) {
-                wishes = JSON.parse(stored);
-                render();
-            } else {
-                wishes = [
-                    { id: 'demo1', name: 'iPhone 15 Pro', price: 129990, currency: '₽', description: 'Хочу новый телефон', reserved: false },
-                    { id: 'demo2', name: 'Книга', price: 1500, currency: '₽', reserved: false },
-                    { id: 'demo3', name: 'Наушники', price: 15000, currency: '₽', reserved: true }
-                ];
-                render();
-            }
-            
+        async function init() {
             setupEvents();
+            
+            // Загружаем данные владельца из Supabase
+            await loadOwnerData();
+            
+            // Загружаем желания владельца
+            await loadOwnerWishes();
+            
+            render();
+        }
+        
+        async function loadOwnerData() {
+            if (!ownerTelegramId) {
+                $('userName').textContent = 'Вишлист';
+                return;
+            }
+            
+            // Ждём инициализации Supabase
+            await new Promise(r => setTimeout(r, 100));
+            
+            const sb = window.supabaseClient;
+            if (!sb) {
+                console.log('No supabase client');
+                return;
+            }
+            
+            try {
+                const { data: owner, error } = await sb
+                    .from('users')
+                    .select('*')
+                    .eq('telegram_id', ownerTelegramId)
+                    .single();
+                
+                console.log('Owner data:', owner, error);
+                
+                if (owner) {
+                    ownerUserId = owner.id;
+                    
+                    // Показываем имя
+                    $('userName').textContent = owner.first_name || 'Вишлист';
+                    
+                    // Показываем аватарку
+                    if (owner.photo_url) {
+                        const avatar = $('userAvatar');
+                        avatar.innerHTML = `<img src="${owner.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+                        avatar.classList.remove('mascot');
+                    }
+                }
+            } catch (err) {
+                console.error('Load owner error:', err);
+            }
+        }
+        
+        async function loadOwnerWishes() {
+            if (!ownerUserId) {
+                console.log('No owner user id');
+                return;
+            }
+            
+            const sb = window.supabaseClient;
+            if (!sb) return;
+            
+            try {
+                const { data, error } = await sb
+                    .from('wishes')
+                    .select('*')
+                    .eq('user_id', ownerUserId)
+                    .order('created_at', { ascending: false });
+                
+                console.log('Owner wishes:', data, error);
+                
+                if (data) {
+                    wishes = data.map(w => ({
+                        id: w.id,
+                        name: w.name,
+                        description: w.description,
+                        price: w.price,
+                        currency: w.currency || '₽',
+                        url: w.url,
+                        photo: w.photo_url,
+                        reserved: w.reserved,
+                        reservedBy: w.reserved_by
+                    }));
+                }
+            } catch (err) {
+                console.error('Load wishes error:', err);
+            }
         }
 
         function setupEvents() {
@@ -203,18 +264,33 @@
             selectedId = null;
         }
 
-        function confirmGift() {
+        async function confirmGift() {
             if (!selectedId) return;
             haptic.success();
+            
+            const sb = window.supabaseClient;
+            
+            // Сохраняем в Supabase
+            if (sb) {
+                try {
+                    const { error } = await sb
+                        .from('wishes')
+                        .update({ reserved: true, reserved_by: viewerId.toString() })
+                        .eq('id', selectedId);
+                    
+                    console.log('Reserve result:', error);
+                } catch (err) {
+                    console.error('Reserve error:', err);
+                }
+            }
             
             const idx = wishes.findIndex(w => w.id === selectedId);
             if (idx !== -1) {
                 wishes[idx].reserved = true;
                 wishes[idx].reservedBy = viewerId;
-                localStorage.setItem('wishes', JSON.stringify(wishes));
                 render();
                 closeModal();
-                showToast('✓ Отлично!');
+                showToast('✓ Отлично! Владелец не узнает кто это');
                 confetti();
             }
         }

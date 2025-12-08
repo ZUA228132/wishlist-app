@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
     
     document.getElementById('addWishBtn').onclick = () => { haptic.medium(); openAddModal(); };
-    document.getElementById('storyBtn').onclick = () => { haptic.medium(); openStoryModal(); };
     document.getElementById('wishForm').onsubmit = handleSubmit;
 });
 
@@ -359,141 +358,7 @@ window.handlePhoto = function(input) {
     reader.readAsDataURL(file);
 };
 
-// Story Modal
-let storyType = 'wish'; // 'wish' или 'text'
 
-window.openStoryModal = function() {
-    const select = document.getElementById('storyWishSelect');
-    const hasWishes = state.wishes.filter(w => !w.reserved).length > 0;
-    
-    // Заполняем список желаний
-    select.innerHTML = '<option value="">-- Выбери подарок --</option>' + 
-        state.wishes.filter(w => !w.reserved).map(w => `<option value="${w.id}">${esc(w.name)}</option>`).join('');
-    
-    // Если нет желаний - переключаем на текст
-    if (!hasWishes) {
-        selectStoryType('text');
-    } else {
-        selectStoryType('wish');
-    }
-    
-    document.getElementById('storyUsername').textContent = `@${state.username}`;
-    document.getElementById('storyModal').classList.add('active');
-};
-
-window.closeStoryModal = function() {
-    document.getElementById('storyModal').classList.remove('active');
-};
-
-window.selectStoryType = function(type) {
-    storyType = type;
-    haptic.light();
-    
-    // Обновляем табы
-    document.querySelectorAll('.story-type-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.type === type);
-    });
-    
-    // Показываем нужные поля
-    document.getElementById('wishSelectGroup').style.display = type === 'wish' ? 'block' : 'none';
-    document.getElementById('textInputGroup').style.display = type === 'text' ? 'block' : 'none';
-    
-    // Показываем нужный контент в превью
-    document.getElementById('storyWishCard').style.display = type === 'wish' ? 'block' : 'none';
-    document.getElementById('storyTextDisplay').style.display = type === 'text' ? 'flex' : 'none';
-    
-    updateStoryPreview();
-};
-
-window.setStoryText = function(text) {
-    document.getElementById('storyTextInput').value = text;
-    updateStoryPreview();
-    haptic.light();
-};
-
-window.selectTemplate = function(el) {
-    document.querySelectorAll('.story-template').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-    haptic.light();
-    
-    const bg = el.dataset.bg;
-    const preview = document.getElementById('storyPreview');
-    const gradients = {
-        green: 'linear-gradient(135deg, #165B33 0%, #146B3A 50%, #0B3D2E 100%)',
-        warm: 'linear-gradient(135deg, #c41e3a 0%, #ff6b6b 100%)',
-        cool: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        purple: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        sunset: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-    };
-    preview.style.background = gradients[bg] || gradients.green;
-};
-
-window.updateStoryPreview = function() {
-    if (storyType === 'wish') {
-        const wishId = document.getElementById('storyWishSelect').value;
-        const wish = state.wishes.find(w => w.id === wishId);
-        
-        document.getElementById('storyWishName').textContent = wish ? wish.name : 'Выбери желание';
-        document.getElementById('storyWishPrice').textContent = wish?.price ? `${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}` : '💫';
-    } else {
-        const text = document.getElementById('storyTextInput').value || 'Загадай желание!';
-        document.getElementById('storyTextContent').textContent = text;
-    }
-};
-
-window.shareStory = async function() {
-    haptic.medium();
-    const preview = document.getElementById('storyPreview');
-    
-    // Проверяем что выбрано
-    if (storyType === 'wish' && !document.getElementById('storyWishSelect').value) {
-        showToast('Выбери желание');
-        return;
-    }
-    
-    try {
-        showToast('⏳ Создаём...');
-        
-        // Генерируем картинку
-        const canvas = await html2canvas(preview, { 
-            scale: 2, 
-            backgroundColor: null, 
-            useCORS: true,
-            logging: false
-        });
-        
-        // Конвертируем в blob
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        
-        // Пробуем поделиться через Telegram Stories API
-        if (tg?.shareToStory) {
-            const base64 = canvas.toDataURL('image/png');
-            const userId = state.userId;
-            const shareUrl = `https://t.me/${window.BOT_USERNAME || 'giftl_robot'}?start=wishlist_${userId}`;
-            
-            tg.shareToStory(base64, {
-                widget_link: {
-                    url: shareUrl,
-                    name: 'Открыть вишлист'
-                }
-            });
-            haptic.success();
-            showToast('✓ Открываем Stories');
-            closeStoryModal();
-        } else {
-            // Fallback - скачиваем картинку
-            const link = document.createElement('a');
-            link.download = 'giftly-story.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            haptic.success();
-            showToast('✓ Сохранено! Добавь в Stories');
-        }
-    } catch (err) {
-        console.error('Story error:', err);
-        showToast('Ошибка создания');
-    }
-};
 
 // Utils
 function saveLocal() { localStorage.setItem('wishes', JSON.stringify(state.wishes)); }
