@@ -177,6 +177,41 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     action = data.get('action')
     
+    if action == 'broadcast':
+        # Рассылка сообщений (только для админа)
+        if user_id != '7086128174':
+            await update.message.reply_text("❌ Нет прав для рассылки")
+            return
+        
+        message = data.get('message', '')
+        photo = data.get('photo')  # base64 encoded image
+        recipients = data.get('recipients', [])
+        
+        sent_count = 0
+        for recipient_id in recipients:
+            try:
+                if photo:
+                    # Декодируем base64 фото
+                    import base64
+                    photo_data = photo.split(',')[1] if ',' in photo else photo
+                    photo_bytes = base64.b64decode(photo_data)
+                    await context.bot.send_photo(
+                        chat_id=int(recipient_id),
+                        photo=photo_bytes,
+                        caption=message
+                    )
+                else:
+                    await context.bot.send_message(
+                        chat_id=int(recipient_id),
+                        text=message
+                    )
+                sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send to {recipient_id}: {e}")
+        
+        await update.message.reply_text(f"✅ Рассылка отправлена: {sent_count} получателей")
+        return
+    
     if action == 'save_wishes':
         # Сохранение вишлиста
         db['users'][user_id] = {

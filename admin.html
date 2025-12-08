@@ -135,6 +135,16 @@
                         <label class="form-label">Сообщение</label>
                         <textarea id="broadcastMessage" class="form-input" rows="4" placeholder="Текст сообщения..."></textarea>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Фото (опционально)</label>
+                        <div class="photo-upload" onclick="document.getElementById('broadcastPhoto').click()">
+                            <input type="file" id="broadcastPhoto" accept="image/*" hidden onchange="handleBroadcastPhoto(this)">
+                            <div class="photo-preview" id="broadcastPhotoPreview">
+                                <span class="upload-icon">📷</span>
+                                <span class="upload-text">Добавить фото</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-actions">
                         <button class="btn btn-secondary" onclick="closeBroadcastModal()">Отмена</button>
                         <button class="btn btn-primary" onclick="sendBroadcast()">Отправить</button>
@@ -255,18 +265,56 @@
         }
 
         // Broadcast
-        function openBroadcastModal() { document.getElementById('broadcastModal').classList.add('active'); }
+        let broadcastPhotoData = null;
+        
+        function openBroadcastModal() { 
+            document.getElementById('broadcastModal').classList.add('active'); 
+            broadcastPhotoData = null;
+            document.getElementById('broadcastPhotoPreview').style.backgroundImage = '';
+            document.getElementById('broadcastPhotoPreview').classList.remove('has-image');
+        }
         function closeBroadcastModal() { document.getElementById('broadcastModal').classList.remove('active'); }
 
-        function sendBroadcast() {
+        function handleBroadcastPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { showToast('Макс. 5MB'); return; }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                broadcastPhotoData = e.target.result;
+                const preview = document.getElementById('broadcastPhotoPreview');
+                preview.style.backgroundImage = `url(${e.target.result})`;
+                preview.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function sendBroadcast() {
             const message = document.getElementById('broadcastMessage').value.trim();
             if (!message) { showToast('Введите сообщение'); return; }
             
-            // In real app, send via bot API
-            logActivity('broadcast', `Рассылка: "${message.substring(0, 30)}..."`);
+            showToast('⏳ Отправка...');
+            
+            // Получаем список пользователей из localStorage (в реальном приложении - из базы)
+            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            
+            // Отправляем через Telegram WebApp если доступно
+            if (tg && tg.sendData) {
+                const data = {
+                    action: 'broadcast',
+                    message: message,
+                    photo: broadcastPhotoData,
+                    recipients: verified.map(u => u.id)
+                };
+                tg.sendData(JSON.stringify(data));
+            }
+            
+            logActivity('broadcast', `Рассылка: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
             showToast('✅ Рассылка отправлена');
             closeBroadcastModal();
             document.getElementById('broadcastMessage').value = '';
+            broadcastPhotoData = null;
         }
 
         // Verify

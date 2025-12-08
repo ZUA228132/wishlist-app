@@ -122,8 +122,9 @@ window.showDetail = function(groupId) {
     
     renderParticipants(group);
     
-    const base = window.location.origin + window.location.pathname;
-    $('inviteLink').value = `${base}?invite=${group.id}`;
+    // Ссылка через бота для присоединения к группе
+    const botLink = `https://t.me/${window.BOT_USERNAME || 'giftl_robot'}?start=santa_${group.id}`;
+    $('inviteLink').value = botLink;
     
     $('adminSection').style.display = group.adminId === state.userId && !group.shuffled ? 'block' : 'none';
     

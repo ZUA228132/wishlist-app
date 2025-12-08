@@ -99,6 +99,14 @@
                     </div>
                     <span class="list-arrow">›</span>
                 </div>
+                <div class="list-item" id="menuStory">
+                    <div class="list-icon" style="background: linear-gradient(135deg, #c41e3a, #ff6b6b); background-size: 100%;">📸</div>
+                    <div class="list-content">
+                        <div class="list-title">Поделиться в Stories</div>
+                        <div class="list-subtitle">Опубликовать в историях Telegram</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
                 <div class="list-item" id="menuPrivacy">
                     <div class="list-icon purple">🔒</div>
                     <div class="list-content">
@@ -281,6 +289,11 @@
                 shareProfile();
             };
             
+            document.getElementById('menuStory').onclick = () => {
+                haptic.light();
+                shareToStory();
+            };
+            
             document.getElementById('menuPrivacy').onclick = () => {
                 haptic.light();
                 openPrivacyModal();
@@ -309,6 +322,124 @@
                     setPrivacy(value);
                 };
             });
+        }
+        
+        // Шеринг в Telegram Stories
+        async function shareToStory() {
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const botUsername = window.BOT_USERNAME || 'giftl_robot';
+            const botUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
+            
+            // Создаём превью для истории
+            const storyCanvas = document.createElement('canvas');
+            storyCanvas.width = 1080;
+            storyCanvas.height = 1920;
+            const ctx = storyCanvas.getContext('2d');
+            
+            // Градиентный фон
+            const gradient = ctx.createLinearGradient(0, 0, 1080, 1920);
+            gradient.addColorStop(0, '#165B33');
+            gradient.addColorStop(0.5, '#146B3A');
+            gradient.addColorStop(1, '#0B3D2E');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 1080, 1920);
+            
+            // Декоративные элементы
+            ctx.font = '120px serif';
+            ctx.fillText('🎁', 80, 200);
+            ctx.fillText('⭐', 900, 200);
+            ctx.fillText('✨', 80, 1750);
+            ctx.fillText('🎄', 900, 1750);
+            
+            // Заголовок
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 72px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Giftly 🎁', 540, 400);
+            
+            // Имя пользователя
+            ctx.font = '48px -apple-system, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fillText(`@${state.username}`, 540, 500);
+            
+            // Карточка с желаниями
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            roundRect(ctx, 140, 600, 800, 400, 40);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 56px -apple-system, sans-serif';
+            ctx.fillText('Мой вишлист', 540, 720);
+            
+            ctx.font = '120px serif';
+            ctx.fillText('🐻‍❄️', 540, 880);
+            
+            ctx.font = '40px -apple-system, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillText(`${wishes.length} желаний`, 540, 970);
+            
+            // CTA
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            roundRect(ctx, 240, 1100, 600, 80, 40);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 36px -apple-system, sans-serif';
+            ctx.fillText('Открыть вишлист →', 540, 1155);
+            
+            // Конвертируем в blob
+            storyCanvas.toBlob(async (blob) => {
+                if (!blob) {
+                    showToast('Ошибка создания изображения');
+                    return;
+                }
+                
+                // Проверяем поддержку shareToStory
+                if (tg && tg.shareToStory) {
+                    try {
+                        // Конвертируем blob в base64
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64 = reader.result.split(',')[1];
+                            tg.shareToStory(base64, {
+                                widget_link: {
+                                    url: botUrl,
+                                    name: 'Открыть вишлист'
+                                }
+                            });
+                            haptic.success();
+                        };
+                        reader.readAsDataURL(blob);
+                    } catch (e) {
+                        console.error('Story share error:', e);
+                        showToast('Ошибка публикации');
+                    }
+                } else {
+                    // Fallback - скачать изображение
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'giftly-story.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('📥 Изображение сохранено');
+                }
+            }, 'image/png');
+        }
+        
+        // Вспомогательная функция для скруглённых прямоугольников
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
         }
 
         function shareProfile() {

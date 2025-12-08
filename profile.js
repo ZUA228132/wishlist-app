@@ -151,7 +151,11 @@ function checkAchievements() {
 
 function generateQR() {
     const qrContainer = document.getElementById('qrCode');
-    const shareUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+    let shareUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+    shareUrl += `&name=${encodeURIComponent(state.userName)}`;
+    if (state.photoUrl) {
+        shareUrl += `&photo=${encodeURIComponent(state.photoUrl)}`;
+    }
     
     if (typeof QRCode !== 'undefined') {
         qrContainer.innerHTML = '';
@@ -181,7 +185,13 @@ function downloadQR() {
 }
 
 function shareProfile() {
-    const shareUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+    // Формируем URL с именем и фото владельца
+    let shareUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+    shareUrl += `&name=${encodeURIComponent(state.userName)}`;
+    if (state.photoUrl) {
+        shareUrl += `&photo=${encodeURIComponent(state.photoUrl)}`;
+    }
+    
     const text = `🎁 Мой новогодний вишлист!\n\nВыбери что хочешь мне подарить 🎄`;
     
     if (tg) {
