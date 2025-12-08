@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Giftly - Профиль</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+    </div>
+
+    <div class="app">
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">🎁</span>
+                <span class="nav-label">Желания</span>
+            </a>
+            <a href="santa.html" class="nav-item">
+                <span class="nav-icon">🎅</span>
+                <span class="nav-label">Санта</span>
+            </a>
+            <a href="profile.html" class="nav-item active">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </a>
+        </nav>
+
+        <header class="profile-header">
+            <div class="garland">
+                <div class="garland-wire"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+            </div>
+            <div class="profile-avatar" id="profileAvatar">
+                <span id="avatarEmoji">🐻‍❄️</span>
+            </div>
+            <h1 class="profile-name">
+                <span id="profileName">Пользователь</span>
+                <span class="verified-badge" id="verifiedBadge" style="display: none;">✓</span>
+            </h1>
+            <p class="profile-username" id="profileUsername">@username</p>
+            
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="wishesCount">0</div>
+                    <div class="stat-label">Желаний</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="giftedCount">0</div>
+                    <div class="stat-label">Подарено</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="santaCount">0</div>
+                    <div class="stat-label">Групп</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="section" style="margin-top: 24px;">
+            <div class="section-label">Достижения</div>
+            <div class="achievements-grid">
+                <div class="achievement locked" id="ach1"><div class="achievement-icon">🎁</div><div class="achievement-name">Первое</div></div>
+                <div class="achievement locked" id="ach2"><div class="achievement-icon">🎅</div><div class="achievement-name">Санта</div></div>
+                <div class="achievement locked" id="ach3"><div class="achievement-icon">💝</div><div class="achievement-name">Щедрый</div></div>
+                <div class="achievement locked" id="ach4"><div class="achievement-icon">⭐</div><div class="achievement-name">10+</div></div>
+                <div class="achievement locked" id="ach5"><div class="achievement-icon">🎄</div><div class="achievement-name">Лидер</div></div>
+                <div class="achievement locked" id="ach6"><div class="achievement-icon">🌟</div><div class="achievement-name">Звезда</div></div>
+                <div class="achievement locked" id="ach7"><div class="achievement-icon">💎</div><div class="achievement-name">VIP</div></div>
+                <div class="achievement locked" id="ach8"><div class="achievement-icon">🏆</div><div class="achievement-name">Легенда</div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">Настройки</div>
+            <div class="list">
+                <div class="list-item" id="menuShare">
+                    <div class="list-icon blue">📤</div>
+                    <div class="list-content">
+                        <div class="list-title">Поделиться</div>
+                        <div class="list-subtitle">Отправить вишлист друзьям</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+                <div class="list-item" id="menuPrivacy">
+                    <div class="list-icon purple">🔒</div>
+                    <div class="list-content">
+                        <div class="list-title">Приватность</div>
+                        <div class="list-subtitle" id="privacyStatus">Публичный</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+                <div class="list-item" id="menuSupport">
+                    <div class="list-icon green">💬</div>
+                    <div class="list-content">
+                        <div class="list-title">Поддержка</div>
+                        <div class="list-subtitle">Написать нам</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Link (only for admin) -->
+        <div class="section" id="adminSection" style="display: none;">
+            <div class="section-label">Администрирование</div>
+            <div class="list">
+                <div class="list-item" onclick="location.href='admin.html'">
+                    <div class="list-icon red">⚙️</div>
+                    <div class="list-content">
+                        <div class="list-title">Админ-панель</div>
+                        <div class="list-subtitle">Управление приложением</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+            </div>
+        </div>
+
+        <p style="text-align: center; color: var(--text-tertiary); font-size: 13px; padding: 20px;">
+            <span class="mascot mascot-small">🐻‍❄️</span> Giftly v1.0
+        </p>
+
+        <!-- Privacy Modal -->
+        <div class="modal" id="privacyModal">
+            <div class="modal-overlay" onclick="closePrivacyModal()"></div>
+            <div class="modal-content" style="max-height: 55vh;">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>🔒 Приватность</h2>
+                    <button class="modal-close" onclick="closePrivacyModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="list">
+                        <div class="list-item privacy-option" data-value="public">
+                            <div class="list-icon blue">🌍</div>
+                            <div class="list-content">
+                                <div class="list-title">Публичный</div>
+                                <div class="list-subtitle">Любой может открыть</div>
+                            </div>
+                            <span class="privacy-check" id="check-public">✓</span>
+                        </div>
+                        <div class="list-item privacy-option" data-value="friends">
+                            <div class="list-icon green">👥</div>
+                            <div class="list-content">
+                                <div class="list-title">Только друзья</div>
+                                <div class="list-subtitle">Пользователи Telegram</div>
+                            </div>
+                            <span class="privacy-check" id="check-friends" style="display:none;">✓</span>
+                        </div>
+                        <div class="list-item privacy-option" data-value="private">
+                            <div class="list-icon purple">🔐</div>
+                            <div class="list-content">
+                                <div class="list-title">Приватный</div>
+                                <div class="list-subtitle">Только по ссылке</div>
+                            </div>
+                            <span class="privacy-check" id="check-private" style="display:none;">✓</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const ADMIN_ID = '7086128174';
+        
+        const state = {
+            userId: tg?.initDataUnsafe?.user?.id?.toString() || 'demo',
+            userName: tg?.initDataUnsafe?.user?.first_name || 'Пользователь',
+            username: tg?.initDataUnsafe?.user?.username || 'user',
+            photoUrl: tg?.initDataUnsafe?.user?.photo_url || null,
+            privacy: localStorage.getItem('privacy') || 'public'
+        };
+
+        const haptic = {
+            light: () => tg?.HapticFeedback?.impactOccurred('light'),
+            success: () => tg?.HapticFeedback?.notificationOccurred('success')
+        };
+
+        function init() {
+            loadProfile();
+            loadStats();
+            checkVerified();
+            checkAdmin();
+            checkAchievements();
+            setupEvents();
+            updatePrivacyStatus();
+        }
+
+        function loadProfile() {
+            document.getElementById('profileName').textContent = state.userName;
+            document.getElementById('profileUsername').textContent = `@${state.username}`;
+            
+            if (state.photoUrl) {
+                document.getElementById('avatarEmoji').style.display = 'none';
+                const img = document.createElement('img');
+                img.src = state.photoUrl;
+                document.getElementById('profileAvatar').appendChild(img);
+            }
+        }
+
+        function loadStats() {
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const groups = JSON.parse(localStorage.getItem('santaGroups') || '[]');
+            const gifted = wishes.filter(w => w.reserved).length;
+            
+            animateValue('wishesCount', 0, wishes.length, 600);
+            animateValue('giftedCount', 0, gifted, 600);
+            animateValue('santaCount', 0, groups.length, 600);
+        }
+
+        function animateValue(id, start, end, duration) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (start === end) { el.textContent = end; return; }
+            
+            const startTime = performance.now();
+            const range = end - start;
+            
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.floor(start + range * eased);
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        function checkVerified() {
+            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            const isVerified = verified.some(u => u.id === state.userId);
+            document.getElementById('verifiedBadge').style.display = isVerified ? 'inline-flex' : 'none';
+        }
+
+        function checkAdmin() {
+            const isAdmin = state.userId === ADMIN_ID || state.userId === 'demo';
+            document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+        }
+
+        function checkAchievements() {
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const groups = JSON.parse(localStorage.getItem('santaGroups') || '[]');
+            const gifted = wishes.filter(w => w.reserved).length;
+            
+            if (wishes.length > 0) document.getElementById('ach1').classList.remove('locked');
+            if (groups.length > 0) document.getElementById('ach2').classList.remove('locked');
+            if (gifted > 0) document.getElementById('ach3').classList.remove('locked');
+            if (wishes.length >= 10) document.getElementById('ach4').classList.remove('locked');
+            
+            const created = groups.filter(g => g.adminId === state.userId);
+            if (created.length > 0) document.getElementById('ach5').classList.remove('locked');
+        }
+
+        function setupEvents() {
+            document.getElementById('menuShare').onclick = () => {
+                haptic.light();
+                shareProfile();
+            };
+            
+            document.getElementById('menuPrivacy').onclick = () => {
+                haptic.light();
+                openPrivacyModal();
+            };
+            
+            document.getElementById('menuSupport').onclick = () => {
+                haptic.light();
+                if (tg) tg.openTelegramLink('https://t.me/giftly_support');
+                else window.open('https://t.me/giftly_support', '_blank');
+            };
+            
+            // Achievement clicks
+            document.querySelectorAll('.achievement').forEach(ach => {
+                ach.onclick = () => {
+                    haptic.light();
+                    const name = ach.querySelector('.achievement-name').textContent;
+                    const isLocked = ach.classList.contains('locked');
+                    showToast(isLocked ? `🔒 ${name} - ещё не получено` : `✅ ${name}`);
+                };
+            });
+
+            // Privacy options
+            document.querySelectorAll('.privacy-option').forEach(opt => {
+                opt.onclick = () => {
+                    const value = opt.dataset.value;
+                    setPrivacy(value);
+                };
+            });
+        }
+
+        function shareProfile() {
+            const url = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}shared.html?user=${state.userId}`;
+            const text = '🎁 Мой вишлист в Giftly!';
+            
+            if (tg) {
+                tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+            } else if (navigator.share) {
+                navigator.share({ title: 'Giftly', text, url });
+            } else {
+                navigator.clipboard.writeText(url);
+                showToast('✓ Ссылка скопирована');
+            }
+        }
+
+        function openPrivacyModal() {
+            updatePrivacyChecks();
+            document.getElementById('privacyModal').classList.add('active');
+        }
+
+        function closePrivacyModal() {
+            document.getElementById('privacyModal').classList.remove('active');
+        }
+
+        function setPrivacy(value) {
+            state.privacy = value;
+            localStorage.setItem('privacy', value);
+            updatePrivacyChecks();
+            updatePrivacyStatus();
+            haptic.success();
+            showToast('✓ Настройки сохранены');
+            closePrivacyModal();
+        }
+
+        function updatePrivacyChecks() {
+            document.getElementById('check-public').style.display = state.privacy === 'public' ? 'inline' : 'none';
+            document.getElementById('check-friends').style.display = state.privacy === 'friends' ? 'inline' : 'none';
+            document.getElementById('check-private').style.display = state.privacy === 'private' ? 'inline' : 'none';
+        }
+
+        function updatePrivacyStatus() {
+            const labels = { public: 'Публичный', friends: 'Только друзья', private: 'Приватный' };
+            document.getElementById('privacyStatus').textContent = labels[state.privacy] || 'Публичный';
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2000);
+        }
+
+        init();
+    </script>
+
+    <script src="config.js"></script>
+    <style>
+        .privacy-check { color: #667eea; font-weight: bold; }
+    </style>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Giftly</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+    </div>
+
+    <div class="app">
+        <!-- Tab Bar -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item active">
+                <span class="nav-icon">🎁</span>
+                <span class="nav-label">Желания</span>
+            </a>
+            <a href="santa.html" class="nav-item">
+                <span class="nav-icon">🎅</span>
+                <span class="nav-label">Санта</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </a>
+        </nav>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="garland">
+                <div class="garland-wire"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+                <div class="garland-light"></div>
+            </div>
+            <div class="header-content">
+                <span class="mascot">🐻‍❄️</span>
+                <h1>Giftly</h1>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="section">
+            <div id="wishesList"></div>
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon mascot mascot-large">🐻‍❄️</div>
+                <h3>Пока пусто</h3>
+                <p>Мишка ждёт твоё первое желание! 🎁</p>
+            </div>
+        </div>
+
+        <!-- Story FAB -->
+        <button class="story-fab" id="storyBtn">📸</button>
+
+        <!-- Add FAB -->
+        <button class="fab" id="addWishBtn">+</button>
+
+        <!-- Add Modal -->
+        <div class="modal" id="addModal">
+            <div class="modal-overlay" onclick="closeAddModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2 id="modalTitle">Новое желание</h2>
+                    <button class="modal-close" onclick="closeAddModal()">×</button>
+                </div>
+                <form id="wishForm" class="modal-body">
+                    <input type="hidden" id="wishId">
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" id="wishName" class="form-input" placeholder="Что хочешь?" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ссылка</label>
+                        <input type="url" id="wishUrl" class="form-input" placeholder="https://...">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Цена</label>
+                            <input type="number" id="wishPrice" class="form-input" placeholder="0">
+                        </div>
+                        <div class="form-group" style="max-width: 90px;">
+                            <label class="form-label">Валюта</label>
+                            <select id="wishCurrency" class="form-input">
+                                <option value="₽">₽</option>
+                                <option value="$">$</option>
+                                <option value="€">€</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Фото</label>
+                        <div class="photo-upload" onclick="document.getElementById('wishPhoto').click()">
+                            <input type="file" id="wishPhoto" accept="image/*" hidden onchange="handlePhoto(this)">
+                            <div class="photo-preview" id="photoPreview">
+                                <span class="upload-icon">📷</span>
+                                <span class="upload-text">Добавить фото</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <textarea id="wishDescription" class="form-input" rows="3" placeholder="Детали..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Story Modal -->
+        <div class="modal" id="storyModal">
+            <div class="modal-overlay" onclick="closeStoryModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>📸 Создать историю</h2>
+                    <button class="modal-close" onclick="closeStoryModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="story-templates">
+                        <div class="story-template active" data-bg="purple" onclick="selectTemplate(this)"></div>
+                        <div class="story-template" data-bg="warm" onclick="selectTemplate(this)"></div>
+                        <div class="story-template" data-bg="cool" onclick="selectTemplate(this)"></div>
+                        <div class="story-template" data-bg="green" onclick="selectTemplate(this)"></div>
+                        <div class="story-template" data-bg="sunset" onclick="selectTemplate(this)"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Желание</label>
+                        <select id="storyWishSelect" class="form-input" onchange="updateStoryPreview()">
+                            <option value="">-- Выбери --</option>
+                        </select>
+                    </div>
+
+                    <div class="story-preview" id="storyPreview">
+                        <div class="story-preview-inner">
+                            <div class="story-decoration top-left">🎁</div>
+                            <div class="story-decoration top-right">⭐</div>
+                            <div class="story-decoration bottom-left">✨</div>
+                            <div class="story-decoration bottom-right">🎄</div>
+                            
+                            <div class="story-title">Giftly 🎁</div>
+                            
+                            <div class="story-wish-card">
+                                <div class="story-wish-name" id="storyWishName">Выбери желание</div>
+                                <div class="story-wish-price" id="storyWishPrice">💫</div>
+                            </div>
+                            
+                            <div class="story-footer">
+                                <div class="story-username" id="storyUsername">@username</div>
+                                <div class="story-cta">Открыть вишлист →</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeStoryModal()">Отмена</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadStory()">📥 Скачать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

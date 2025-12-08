@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Giftly Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+    </div>
+
+    <div class="app">
+        <!-- Access Denied -->
+        <div id="accessDenied" style="display: none;">
+            <div class="empty-state active">
+                <div class="empty-icon">🔒</div>
+                <h3>Доступ запрещён</h3>
+                <p>У вас нет прав администратора</p>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" style="display: none;">
+            <header class="header">
+                <div class="header-content">
+                    <h1>Admin</h1>
+                    <div class="header-actions">
+                        <button class="btn-icon" onclick="location.href='index.html'">🏠</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats -->
+            <div class="section">
+                <div class="section-header">📊 Статистика</div>
+                <div class="admin-grid">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-value" id="totalUsers">0</div>
+                        <div class="admin-stat-label">Пользователей</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-value" id="totalWishes">0</div>
+                        <div class="admin-stat-label">Желаний</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-value" id="totalGroups">0</div>
+                        <div class="admin-stat-label">Групп Санты</div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-value" id="totalGifted">0</div>
+                        <div class="admin-stat-label">Подарено</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="section">
+                <div class="section-header">⚡ Действия</div>
+                <div class="list">
+                    <div class="list-item" onclick="openBroadcastModal()">
+                        <div class="list-icon blue">📢</div>
+                        <div class="list-content">
+                            <div class="list-title">Рассылка</div>
+                            <div class="list-subtitle">Отправить сообщение всем</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                    <div class="list-item" onclick="openVerifyModal()">
+                        <div class="list-icon green">✓</div>
+                        <div class="list-content">
+                            <div class="list-title">Верификация</div>
+                            <div class="list-subtitle">Выдать галочку пользователю</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                    <div class="list-item" onclick="exportData()">
+                        <div class="list-icon orange">📥</div>
+                        <div class="list-content">
+                            <div class="list-title">Экспорт данных</div>
+                            <div class="list-subtitle">Скачать JSON</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                    <div class="list-item" onclick="clearAllData()">
+                        <div class="list-icon red">🗑️</div>
+                        <div class="list-content">
+                            <div class="list-title">Очистить данные</div>
+                            <div class="list-subtitle">Удалить всё (осторожно!)</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verified Users -->
+            <div class="section">
+                <div class="section-header">✓ Верифицированные</div>
+                <div id="verifiedList" class="list">
+                    <div class="list-item" style="justify-content: center; color: var(--text-secondary);">
+                        Нет верифицированных пользователей
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="section">
+                <div class="section-header">📋 Последние действия</div>
+                <div id="activityLog" class="list">
+                    <div class="list-item" style="justify-content: center; color: var(--text-secondary);">
+                        Нет активности
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Broadcast Modal -->
+        <div class="modal" id="broadcastModal">
+            <div class="modal-overlay" onclick="closeBroadcastModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>📢 Рассылка</h2>
+                    <button class="modal-close" onclick="closeBroadcastModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Сообщение</label>
+                        <textarea id="broadcastMessage" class="form-input" rows="4" placeholder="Текст сообщения..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeBroadcastModal()">Отмена</button>
+                        <button class="btn btn-primary" onclick="sendBroadcast()">Отправить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Modal -->
+        <div class="modal" id="verifyModal">
+            <div class="modal-overlay" onclick="closeVerifyModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>✓ Верификация</h2>
+                    <button class="modal-close" onclick="closeVerifyModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Telegram ID</label>
+                        <input type="text" id="verifyUserId" class="form-input" placeholder="123456789">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Имя пользователя</label>
+                        <input type="text" id="verifyUserName" class="form-input" placeholder="Имя">
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeVerifyModal()">Отмена</button>
+                        <button class="btn btn-success" onclick="verifyUser()">Верифицировать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+
+        const ADMIN_ID = '7086128174';
+        const currentUserId = tg?.initDataUnsafe?.user?.id?.toString() || 'demo';
+
+        // Check admin access
+        function checkAccess() {
+            // Allow demo access for testing, or check real Telegram ID
+            const isAdmin = currentUserId === ADMIN_ID || currentUserId === 'demo';
+            
+            document.getElementById('accessDenied').style.display = isAdmin ? 'none' : 'block';
+            document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';
+            
+            if (isAdmin) {
+                loadStats();
+                loadVerifiedUsers();
+                loadActivity();
+            }
+        }
+
+        function loadStats() {
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const groups = JSON.parse(localStorage.getItem('santaGroups') || '[]');
+            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            const gifted = wishes.filter(w => w.reserved).length;
+            
+            document.getElementById('totalUsers').textContent = verified.length || 1;
+            document.getElementById('totalWishes').textContent = wishes.length;
+            document.getElementById('totalGroups').textContent = groups.length;
+            document.getElementById('totalGifted').textContent = gifted;
+        }
+
+        function loadVerifiedUsers() {
+            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            const list = document.getElementById('verifiedList');
+            
+            if (verified.length === 0) {
+                list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">Нет верифицированных</div>';
+                return;
+            }
+            
+            list.innerHTML = verified.map(u => `
+                <div class="list-item">
+                    <div class="list-icon green">✓</div>
+                    <div class="list-content">
+                        <div class="list-title">${u.name}</div>
+                        <div class="list-subtitle">ID: ${u.id}</div>
+                    </div>
+                    <button class="btn btn-text" onclick="removeVerification('${u.id}')">Удалить</button>
+                </div>
+            `).join('');
+        }
+
+        function loadActivity() {
+            const activity = JSON.parse(localStorage.getItem('adminActivity') || '[]');
+            const list = document.getElementById('activityLog');
+            
+            if (activity.length === 0) {
+                list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">Нет активности</div>';
+                return;
+            }
+            
+            list.innerHTML = activity.slice(0, 10).map(a => `
+                <div class="list-item">
+                    <div class="list-icon ${a.type === 'broadcast' ? 'blue' : 'green'}">${a.type === 'broadcast' ? '📢' : '✓'}</div>
+                    <div class="list-content">
+                        <div class="list-title">${a.action}</div>
+                        <div class="list-subtitle">${new Date(a.time).toLocaleString('ru')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function logActivity(type, action) {
+            const activity = JSON.parse(localStorage.getItem('adminActivity') || '[]');
+            activity.unshift({ type, action, time: Date.now() });
+            localStorage.setItem('adminActivity', JSON.stringify(activity.slice(0, 50)));
+            loadActivity();
+        }
+
+        // Broadcast
+        function openBroadcastModal() { document.getElementById('broadcastModal').classList.add('active'); }
+        function closeBroadcastModal() { document.getElementById('broadcastModal').classList.remove('active'); }
+
+        function sendBroadcast() {
+            const message = document.getElementById('broadcastMessage').value.trim();
+            if (!message) { showToast('Введите сообщение'); return; }
+            
+            // In real app, send via bot API
+            logActivity('broadcast', `Рассылка: "${message.substring(0, 30)}..."`);
+            showToast('✅ Рассылка отправлена');
+            closeBroadcastModal();
+            document.getElementById('broadcastMessage').value = '';
+        }
+
+        // Verify
+        function openVerifyModal() { document.getElementById('verifyModal').classList.add('active'); }
+        function closeVerifyModal() { document.getElementById('verifyModal').classList.remove('active'); }
+
+        function verifyUser() {
+            const userId = document.getElementById('verifyUserId').value.trim();
+            const userName = document.getElementById('verifyUserName').value.trim();
+            
+            if (!userId || !userName) { showToast('Заполните все поля'); return; }
+            
+            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            
+            if (verified.some(u => u.id === userId)) {
+                showToast('Уже верифицирован');
+                return;
+            }
+            
+            verified.push({ id: userId, name: userName, verifiedAt: Date.now() });
+            localStorage.setItem('verifiedUsers', JSON.stringify(verified));
+            
+            logActivity('verify', `Верифицирован: ${userName}`);
+            showToast('✅ Пользователь верифицирован');
+            closeVerifyModal();
+            loadVerifiedUsers();
+            loadStats();
+            
+            document.getElementById('verifyUserId').value = '';
+            document.getElementById('verifyUserName').value = '';
+        }
+
+        function removeVerification(userId) {
+            if (!confirm('Удалить верификацию?')) return;
+            
+            let verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+            verified = verified.filter(u => u.id !== userId);
+            localStorage.setItem('verifiedUsers', JSON.stringify(verified));
+            
+            logActivity('verify', 'Верификация удалена');
+            showToast('Верификация удалена');
+            loadVerifiedUsers();
+            loadStats();
+        }
+
+        function exportData() {
+            const data = {
+                wishes: JSON.parse(localStorage.getItem('wishes') || '[]'),
+                groups: JSON.parse(localStorage.getItem('santaGroups') || '[]'),
+                verified: JSON.parse(localStorage.getItem('verifiedUsers') || '[]'),
+                activity: JSON.parse(localStorage.getItem('adminActivity') || '[]'),
+                exportedAt: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `giftly-export-${Date.now()}.json`;
+            a.click();
+            
+            showToast('📥 Данные экспортированы');
+        }
+
+        function clearAllData() {
+            if (!confirm('Удалить ВСЕ данные? Это действие нельзя отменить!')) return;
+            if (!confirm('Вы уверены?')) return;
+            
+            localStorage.clear();
+            showToast('🗑️ Данные удалены');
+            loadStats();
+            loadVerifiedUsers();
+            loadActivity();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+
+        checkAccess();
+    </script>
+    <script src="config.js"></script>
+</body>
+</html>
