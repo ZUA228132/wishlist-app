@@ -132,7 +132,7 @@ function render() {
     }
     
     empty.classList.remove('active');
-    list.innerHTML = state.wishes.map((w, i) => createCard(w, i)).join('');
+    list.innerHTML = state.wishes.map(w => createCard(w)).join('');
     
     document.querySelectorAll('.card').forEach(card => {
         const id = card.dataset.id;
@@ -141,13 +141,18 @@ function render() {
     });
 }
 
-function createCard(wish, i) {
+function createCard(wish) {
     const img = wish.photo 
         ? `<img src="${wish.photo}" class="card-image" loading="lazy">` 
         : `<div class="card-image-placeholder">🎁</div>`;
     const price = wish.price ? `<span class="card-price">${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}</span>` : '';
-    const link = wish.url ? `<a href="${wish.url}" target="_blank" style="color: #667eea; font-size: 14px; text-decoration: none; display: block; margin-bottom: 8px;">🔗 Где купить</a>` : '';
+    const link = wish.url ? `<a href="${wish.url}" target="_blank" style="color: #007aff; font-size: 14px; text-decoration: none; display: block; margin-bottom: 8px;">🔗 Где купить</a>` : '';
     const desc = wish.description ? `<p class="card-subtitle">${esc(wish.description)}</p>` : '';
+    
+    // Статус "кто-то хочет подарить"
+    const reservedBadge = wish.reserved 
+        ? `<div style="background: #34c759; color: white; padding: 10px 16px; border-radius: 12px; text-align: center; margin-top: 12px; font-weight: 600; font-size: 14px;">🎁 Кто-то хочет подарить!</div>`
+        : '';
     
     return `
         <div class="card ${wish.reserved ? 'reserved' : ''}" data-id="${wish.id}">
@@ -159,6 +164,7 @@ function createCard(wish, i) {
                 </div>
                 ${desc}
                 ${link}
+                ${reservedBadge}
                 ${!wish.reserved ? `
                 <div class="card-actions">
                     <button class="btn btn-secondary btn-edit">✏️ Изменить</button>
@@ -400,30 +406,29 @@ function confetti() {
 
 // Модалка первого желания
 function showFirstWishModal() {
-    // Создаём модалку
     const modal = document.createElement('div');
     modal.id = 'firstWishModal';
     modal.innerHTML = `
         <div class="modal-overlay" onclick="closeFirstWishModal()"></div>
         <div class="modal-content" style="text-align: center; padding: 32px 24px;">
             <div style="font-size: 80px; margin-bottom: 16px;">🎉</div>
-            <h2 style="color: white; margin-bottom: 12px; font-size: 24px;">Первое желание есть!</h2>
-            <p style="color: rgba(255,255,255,0.7); margin-bottom: 24px; font-size: 16px;">
+            <h2 style="color: #1b5e20; margin-bottom: 12px; font-size: 24px;">Первое желание есть!</h2>
+            <p style="color: #8e8e93; margin-bottom: 24px; font-size: 16px;">
                 Хочешь поделиться своим вишлистом в Stories?
             </p>
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button onclick="closeFirstWishModal()" style="
                     padding: 14px 24px;
-                    background: rgba(255,255,255,0.1);
+                    background: #e5e5ea;
                     border: none;
                     border-radius: 12px;
-                    color: white;
+                    color: #000;
                     font-size: 16px;
                     cursor: pointer;
                 ">Позже</button>
                 <button onclick="goToStoryEditor()" style="
                     padding: 14px 24px;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    background: #34c759;
                     border: none;
                     border-radius: 12px;
                     color: white;

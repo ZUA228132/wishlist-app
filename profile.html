@@ -11,13 +11,13 @@
 </head>
 <body>
     <!-- Web Block Overlay -->
-    <div id="webBlock" style="display: none; position: fixed; inset: 0; z-index: 9999; background: linear-gradient(180deg, #1e3a5f 0%, #2d4a6f 50%, #1a2f4a 100%); align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
+    <div id="webBlock" style="display: none; position: fixed; inset: 0; z-index: 9999; background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%); align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
         <div style="font-size: 80px; margin-bottom: 20px;">👤</div>
-        <h1 style="color: white; font-size: 28px; margin-bottom: 16px;">Профиль</h1>
-        <p style="color: rgba(255,255,255,0.8); font-size: 16px; margin-bottom: 32px; max-width: 300px;">
+        <h1 style="color: #1b5e20; font-size: 28px; margin-bottom: 16px;">Профиль</h1>
+        <p style="color: #388e3c; font-size: 16px; margin-bottom: 32px; max-width: 300px;">
             Это приложение работает только внутри Telegram. Откройте бота, чтобы начать!
         </p>
-        <a href="https://t.me/giftl_robot" style="background: linear-gradient(135deg, #165B33, #146B3A); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
+        <a href="https://t.me/giftl_robot" style="background: #34c759; color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
             📱 Открыть в Telegram
         </a>
     </div>
@@ -180,22 +180,18 @@
             <div class="modal-content" style="max-height: 90vh;">
                 <div class="modal-handle"></div>
                 <div class="modal-header">
-                    <h2>📸 Создать историю</h2>
+                    <h2>📸 Поделиться в Stories</h2>
                     <button class="modal-close" onclick="closeStoryModal()">×</button>
                 </div>
                 <div class="modal-body">
-                    <!-- Выбор желания -->
-                    <div class="form-group">
-                        <label class="form-label">Выбери желание для Stories</label>
-                        <select id="storyWishSelect" class="form-input" onchange="updateStoryCanvas()">
-                            <option value="">-- Без желания --</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Превью (720x1280 масштабируется для отображения) -->
+                    <!-- Превью готовой картинки -->
                     <div style="display:flex;justify-content:center;margin:16px 0;">
                         <canvas id="storyCanvas" width="720" height="1280" style="border-radius:16px;max-width:100%;height:auto;max-height:400px;box-shadow: 0 8px 32px rgba(0,0,0,0.3);"></canvas>
                     </div>
+                    
+                    <p style="text-align:center;color:var(--text-secondary);font-size:14px;margin-bottom:16px;">
+                        Картинка + кнопка «Открыть вишлист»
+                    </p>
                     
                     <div class="form-actions">
                         <button type="button" class="btn btn-primary" onclick="shareStoryToTelegram()" style="width: 100%;">📤 Опубликовать в Stories</button>
@@ -589,54 +585,7 @@
         }
 
         // ===== STORY EDITOR =====
-        async function openStoryEditor() {
-            // Заполняем список желаний - сначала пробуем из Supabase
-            let wishes = [];
-            const sb = window.supabaseClient;
-            
-            if (sb && state.userId !== 'demo') {
-                try {
-                    // Ищем пользователя по telegram_id
-                    const { data: user } = await sb
-                        .from('users')
-                        .select('id')
-                        .eq('telegram_id', parseInt(state.userId))
-                        .single();
-                    
-                    if (user) {
-                        const { data } = await sb
-                            .from('wishes')
-                            .select('*')
-                            .eq('user_id', user.id)
-                            .order('created_at', { ascending: false });
-                        
-                        if (data && data.length > 0) {
-                            wishes = data.map(w => ({
-                                id: w.id,
-                                name: w.name,
-                                price: w.price,
-                                currency: w.currency || '₽',
-                                reserved: w.reserved
-                            }));
-                        }
-                    }
-                } catch (err) {
-                    console.error('Load wishes for story error:', err);
-                }
-            }
-            
-            // Fallback на localStorage
-            if (wishes.length === 0) {
-                wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
-            }
-            
-            // Сохраняем для использования в canvas
-            window.storyWishes = wishes;
-            
-            const select = document.getElementById('storyWishSelect');
-            select.innerHTML = '<option value="">-- Без желания --</option>' + 
-                wishes.filter(w => !w.reserved).map(w => `<option value="${w.id}">${w.name}</option>`).join('');
-            
+        function openStoryEditor() {
             document.getElementById('storyModal').classList.add('active');
             updateStoryCanvas();
         }
@@ -652,80 +601,18 @@
         function updateStoryCanvas() {
             const canvas = document.getElementById('storyCanvas');
             const ctx = canvas.getContext('2d');
-            const w = 720, h = 1280; // Полный размер Stories
+            const w = 720, h = 1280;
             
-            // Очищаем canvas
             ctx.clearRect(0, 0, w, h);
             
-            // Рисуем фоновую картинку
+            // Просто рисуем готовую картинку БЕЗ текста
             if (storyBgImage.complete) {
                 ctx.drawImage(storyBgImage, 0, 0, w, h);
-                drawStoryContent(ctx, w, h);
             } else {
-                // Если картинка ещё не загружена - ждём
                 storyBgImage.onload = () => {
                     ctx.drawImage(storyBgImage, 0, 0, w, h);
-                    drawStoryContent(ctx, w, h);
                 };
             }
-        }
-        
-        function drawStoryContent(ctx, w, h) {
-            ctx.textAlign = 'center';
-            
-            // Карточка на картинке примерно: Y=150-720
-            // Заголовок "Giftly" - вверху карточки
-            ctx.fillStyle = '#1a4d2e';
-            ctx.font = 'bold 36px -apple-system, sans-serif';
-            ctx.fillText('Giftly 🎁', w/2, 220);
-            
-            // Имя пользователя
-            ctx.font = '20px -apple-system, sans-serif';
-            ctx.fillStyle = '#2d5a3d';
-            const userName = state.userName.length > 12 ? state.userName.substring(0, 10) + '...' : state.userName;
-            ctx.fillText(`Вишлист ${userName}`, w/2, 260);
-            
-            // Желание - в центре карточки
-            const wishId = document.getElementById('storyWishSelect').value;
-            const wishes = window.storyWishes || JSON.parse(localStorage.getItem('wishes') || '[]');
-            const wish = wishes.find(wi => wi.id === wishId || wi.id === parseInt(wishId));
-            
-            if (wish) {
-                // Эмодзи подарка
-                ctx.font = '60px serif';
-                ctx.fillText('🎁', w/2, 400);
-                
-                // Название желания
-                ctx.fillStyle = '#1a4d2e';
-                ctx.font = 'bold 22px -apple-system, sans-serif';
-                const name = wish.name.length > 18 ? wish.name.substring(0, 15) + '...' : wish.name;
-                ctx.fillText(name, w/2, 470);
-                
-                // Цена
-                if (wish.price) {
-                    ctx.font = 'bold 24px -apple-system, sans-serif';
-                    ctx.fillStyle = '#b8860b';
-                    ctx.fillText(`${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency || '₽'}`, w/2, 510);
-                }
-            } else {
-                // Мишка если нет желания
-                ctx.font = '80px serif';
-                ctx.fillText('🐻‍❄️', w/2, 420);
-                
-                ctx.fillStyle = '#1a4d2e';
-                ctx.font = '18px -apple-system, sans-serif';
-                ctx.fillText('Создай свой список желаний!', w/2, 510);
-            }
-            
-            // Кнопка CTA - внизу карточки
-            ctx.fillStyle = '#1a4d2e';
-            ctx.font = 'bold 18px -apple-system, sans-serif';
-            ctx.fillText('Открыть вишлист →', w/2, 810);
-            
-            // Username внизу
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.font = '18px -apple-system, sans-serif';
-            ctx.fillText(`@${state.username}`, w/2, 1000);
         }
         
         async function shareStoryToTelegram() {
@@ -734,43 +621,28 @@
                 return;
             }
             
-            const canvas = document.getElementById('storyCanvas');
+            // Формируем ссылку на вишлист
+            const botUsername = window.BOT_USERNAME || 'giftl_robot';
+            const wishlistUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
             
-            // Загружаем в Supabase Storage и получаем ссылку
-            const sb = window.supabaseClient;
-            if (sb) {
-                showToast('⏳ Загрузка...');
-                try {
-                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                    const fileName = `stories/${state.userId}_${Date.now()}.png`;
-                    
-                    const { error } = await sb.storage
-                        .from('wishlist-images')
-                        .upload(fileName, blob, { contentType: 'image/png', upsert: true });
-                    
-                    if (!error) {
-                        const { data: urlData } = sb.storage
-                            .from('wishlist-images')
-                            .getPublicUrl(fileName);
-                        
-                        const imageUrl = urlData.publicUrl;
-                        
-                        // Шарим ссылку на картинку
-                        const shareText = '🎁 Мой вишлист в Giftly!\n\n' + imageUrl;
-                        tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent('🎁 Мой вишлист в Giftly!')}`);
-                        
-                        haptic.success();
-                        closeStoryModal();
-                        showToast('📤 Открываем шаринг...');
-                        return;
+            // URL готовой картинки (должна быть доступна по HTTPS)
+            const storyImageUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}story-image.png`;
+            
+            // Используем Telegram shareToStory API
+            if (tg.shareToStory) {
+                haptic.success();
+                tg.shareToStory(storyImageUrl, {
+                    widget_link: {
+                        url: wishlistUrl,
+                        name: 'Открыть вишлист'
                     }
-                } catch (err) {
-                    console.error('Upload error:', err);
-                }
+                });
+                closeStoryModal();
+                showToast('📤 Открываем Stories...');
+            } else {
+                // Fallback для старых версий Telegram
+                showToast('Обнови Telegram для публикации в Stories');
             }
-            
-            // Fallback - показываем картинку для скриншота
-            showToast('Сделай скриншот и добавь в Stories');
         }
 
         // Блокировка веб-версии
