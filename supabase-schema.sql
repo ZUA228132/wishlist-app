@@ -119,5 +119,27 @@ $$ language 'plpgsql';
 CREATE TRIGGER generate_santa_group_invite_code BEFORE INSERT ON santa_groups
     FOR EACH ROW EXECUTE FUNCTION generate_invite_code();
 
+-- Verify Requests table (для заявок на верификацию)
+CREATE TABLE verify_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    telegram_id BIGINT NOT NULL,
+    user_name VARCHAR(255),
+    username VARCHAR(255),
+    photo_url TEXT,
+    reason TEXT NOT NULL,
+    socials TEXT,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    reviewed_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_verify_requests_status ON verify_requests(status);
+CREATE INDEX idx_verify_requests_telegram_id ON verify_requests(telegram_id);
+
+ALTER TABLE verify_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view verify requests" ON verify_requests FOR SELECT USING (true);
+CREATE POLICY "Anyone can create verify request" ON verify_requests FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update verify request" ON verify_requests FOR UPDATE USING (true);
+
 -- Storage bucket for images (run in Supabase Dashboard > Storage)
 -- CREATE BUCKET wishlist-images WITH public = true;

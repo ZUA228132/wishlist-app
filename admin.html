@@ -285,10 +285,40 @@
                 .subscribe();
         }
 
-        function loadVerifyRequests() {
-            const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
-            const pending = requests.filter(r => r.status === 'pending');
+        async function loadVerifyRequests() {
             const list = document.getElementById('verifyRequestsList');
+            let pending = [];
+            
+            // Загружаем из Supabase
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase
+                        .from('verify_requests')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .order('created_at', { ascending: false });
+                    
+                    if (data && !error) {
+                        pending = data.map(r => ({
+                            id: r.id,
+                            oderId: r.telegram_id?.toString(),
+                            userName: r.user_name,
+                            username: r.username,
+                            photoUrl: r.photo_url,
+                            reason: r.reason,
+                            socials: r.socials
+                        }));
+                    }
+                } catch (err) {
+                    console.error('Load requests error:', err);
+                }
+            }
+            
+            // Fallback на localStorage
+            if (pending.length === 0) {
+                const localRequests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
+                pending = localRequests.filter(r => r.status === 'pending');
+            }
             
             document.getElementById('requestsCount').textContent = pending.length;
             
@@ -304,8 +334,8 @@
                             ${r.photoUrl ? `<img src="${r.photoUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : '👤'}
                         </div>
                         <div class="list-content">
-                            <div class="list-title">${r.userName} (@${r.username})</div>
-                            <div class="list-subtitle">ID: ${r.userId}</div>
+                            <div class="list-title">${r.userName || 'Пользователь'} ${r.username ? '(@' + r.username + ')' : ''}</div>
+                            <div class="list-subtitle">ID: ${r.userId || r.id}</div>
                             <div class="list-subtitle" style="margin-top: 4px; color: var(--text-primary);">"${r.reason}"</div>
                             ${r.socials ? `<div class="list-subtitle">🔗 ${r.socials}</div>` : ''}
                         </div>
@@ -318,46 +348,103 @@
             `).join('');
         }
         
-        function approveRequest(requestId) {
+        async function approveRequest(requestId) {
+            // Обновляем в Supabase
+            if (supabase) {
+                try {
+                    // Получаем заявку
+                    const { data: request } = await supabase
+                        .from('verify_requests')
+                        .select('*')
+                        .eq('id', requestId)
+                        .single();
+                    
+                    if (request) {
+                        // Обновляем статус
+                        await supabase
+                            .from('verify_requests')
+                            .update({ status: 'approved' })
+                            .eq('id', requestId);
+                        
+                        // Добавляем в верифицированные (localStorage для совместимости)
+                        const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+                        verified.push({
+                            id: request.telegram_id?.toString(),
+                            name: request.user_name,
+                            username: request.username,
+                            verifiedAt: Date.now()
+                        });
+                        localStorage.setItem('verifiedUsers', JSON.stringify(verified));
+                        
+                        logActivity('verify', `Одобрена заявка: ${request.user_name}`);
+                        showToast('✅ Заявка одобрена');
+                        loadVerifyRequests();
+                        loadVerifiedUsers();
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Approve error:', err);
+                }
+            }
+            
+            // Fallback на localStorage
             const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
-            const request = requests.find(r => r.id === requestId);
+            const request = requests.find(r => r.id === requestId || r.id === parseInt(requestId));
             
-            if (!request) return;
-            
-            // Добавляем в верифицированные
-            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
-            verified.push({
-                id: request.userId,
-                name: request.userName,
-                username: request.username,
-                verifiedAt: Date.now()
-            });
-            localStorage.setItem('verifiedUsers', JSON.stringify(verified));
-            
-            // Обновляем статус заявки
-            request.status = 'approved';
-            localStorage.setItem('verifyRequests', JSON.stringify(requests));
-            
-            logActivity('verify', `Одобрена заявка: ${request.userName}`);
-            showToast('✅ Заявка одобрена');
-            loadVerifyRequests();
-            loadVerifiedUsers();
+            if (request) {
+                const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
+                verified.push({
+                    id: request.userId,
+                    name: request.userName,
+                    username: request.username,
+                    verifiedAt: Date.now()
+                });
+                localStorage.setItem('verifiedUsers', JSON.stringify(verified));
+                request.status = 'approved';
+                localStorage.setItem('verifyRequests', JSON.stringify(requests));
+                logActivity('verify', `Одобрена заявка: ${request.userName}`);
+                showToast('✅ Заявка одобрена');
+                loadVerifyRequests();
+                loadVerifiedUsers();
+            }
         }
         
-        function rejectRequest(requestId) {
+        async function rejectRequest(requestId) {
             if (!confirm('Отклонить заявку?')) return;
             
+            // Обновляем в Supabase
+            if (supabase) {
+                try {
+                    const { data: request } = await supabase
+                        .from('verify_requests')
+                        .select('user_name')
+                        .eq('id', requestId)
+                        .single();
+                    
+                    await supabase
+                        .from('verify_requests')
+                        .update({ status: 'rejected' })
+                        .eq('id', requestId);
+                    
+                    logActivity('verify', `Отклонена заявка: ${request?.user_name || 'Пользователь'}`);
+                    showToast('❌ Заявка отклонена');
+                    loadVerifyRequests();
+                    return;
+                } catch (err) {
+                    console.error('Reject error:', err);
+                }
+            }
+            
+            // Fallback на localStorage
             const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
-            const request = requests.find(r => r.id === requestId);
-            
-            if (!request) return;
-            
-            request.status = 'rejected';
-            localStorage.setItem('verifyRequests', JSON.stringify(requests));
-            
-            logActivity('verify', `Отклонена заявка: ${request.userName}`);
-            showToast('❌ Заявка отклонена');
-            loadVerifyRequests();
+            const request = requests.find(r => r.id === requestId || r.id === parseInt(requestId));
+            if (request) {
+                request.status = 'rejected';
+                localStorage.setItem('verifyRequests', JSON.stringify(requests));
+                logActivity('verify', `Отклонена заявка: ${request.userName}`);
+                showToast('❌ Заявка отклонена');
+                loadVerifyRequests();
+            }
         }
 
         function loadVerifiedUsers() {

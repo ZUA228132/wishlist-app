@@ -503,7 +503,7 @@
             document.getElementById('verifyRequestModal').classList.remove('active');
         }
         
-        function submitVerifyRequest() {
+        async function submitVerifyRequest() {
             const reason = document.getElementById('verifyReason').value.trim();
             const socials = document.getElementById('verifySocials').value.trim();
             
@@ -512,12 +512,50 @@
                 return;
             }
             
-            const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
+            const sb = window.supabaseClient;
             
-            // Добавляем заявку
+            // Сохраняем в Supabase
+            if (sb) {
+                try {
+                    const { error } = await sb
+                        .from('verify_requests')
+                        .insert([{
+                            telegram_id: parseInt(state.userId),
+                            user_name: state.userName,
+                            username: state.username,
+                            photo_url: state.photoUrl,
+                            reason: reason,
+                            socials: socials,
+                            status: 'pending'
+                        }]);
+                    
+                    if (error) {
+                        console.error('Supabase error:', error);
+                        // Fallback на localStorage
+                        saveRequestToLocal(reason, socials);
+                    } else {
+                        document.getElementById('verifyStatus').textContent = 'Заявка отправлена ⏳';
+                        haptic.success();
+                        showToast('✓ Заявка отправлена!');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    saveRequestToLocal(reason, socials);
+                }
+            } else {
+                saveRequestToLocal(reason, socials);
+            }
+            
+            closeVerifyRequestModal();
+            document.getElementById('verifyReason').value = '';
+            document.getElementById('verifySocials').value = '';
+        }
+        
+        function saveRequestToLocal(reason, socials) {
+            const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
             requests.push({
                 id: Date.now().toString(),
-                userId: state.userId,
+                oderId: state.userId,
                 userName: state.userName,
                 username: state.username,
                 photoUrl: state.photoUrl,
@@ -526,19 +564,10 @@
                 status: 'pending',
                 createdAt: Date.now()
             });
-            
             localStorage.setItem('verifyRequests', JSON.stringify(requests));
-            
-            // Обновляем статус в UI
             document.getElementById('verifyStatus').textContent = 'Заявка отправлена ⏳';
-            
             haptic.success();
             showToast('✓ Заявка отправлена!');
-            closeVerifyRequestModal();
-            
-            // Очищаем форму
-            document.getElementById('verifyReason').value = '';
-            document.getElementById('verifySocials').value = '';
         }
         
         function checkVerifyRequestStatus() {
@@ -705,64 +734,43 @@
                 return;
             }
             
-            showToast('⏳ Подготовка...');
-            
             const canvas = document.getElementById('storyCanvas');
             
-            // Конвертируем canvas в blob
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            
-            // Загружаем в Supabase Storage
+            // Загружаем в Supabase Storage и получаем ссылку
             const sb = window.supabaseClient;
             if (sb) {
+                showToast('⏳ Загрузка...');
                 try {
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
                     const fileName = `stories/${state.userId}_${Date.now()}.png`;
                     
-                    const { data, error } = await sb.storage
+                    const { error } = await sb.storage
                         .from('wishlist-images')
-                        .upload(fileName, blob, {
-                            contentType: 'image/png',
-                            upsert: true
-                        });
+                        .upload(fileName, blob, { contentType: 'image/png', upsert: true });
                     
-                    if (!error && data) {
-                        // Получаем публичный URL
+                    if (!error) {
                         const { data: urlData } = sb.storage
                             .from('wishlist-images')
                             .getPublicUrl(fileName);
                         
                         const imageUrl = urlData.publicUrl;
-                        console.log('Image uploaded:', imageUrl);
                         
-                        // Публикуем в Stories через Telegram WebApp
-                        if (typeof tg.shareToStory === 'function') {
-                            tg.shareToStory(imageUrl);
-                            haptic.success();
-                            closeStoryModal();
-                            showToast('📤 Публикуем в Stories!');
-                            return;
-                        }
+                        // Шарим ссылку на картинку
+                        const shareText = '🎁 Мой вишлист в Giftly!\n\n' + imageUrl;
+                        tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent('🎁 Мой вишлист в Giftly!')}`);
+                        
+                        haptic.success();
+                        closeStoryModal();
+                        showToast('📤 Открываем шаринг...');
+                        return;
                     }
                 } catch (err) {
                     console.error('Upload error:', err);
                 }
             }
             
-            // Fallback - пробуем с base64
-            try {
-                const base64 = canvas.toDataURL('image/png');
-                if (typeof tg.shareToStory === 'function') {
-                    tg.shareToStory(base64);
-                    haptic.success();
-                    closeStoryModal();
-                    showToast('📤 Публикуем!');
-                } else {
-                    showToast('Stories недоступны в этой версии');
-                }
-            } catch (e) {
-                console.error('Story error:', e);
-                showToast('Ошибка: ' + e.message);
-            }
+            // Fallback - показываем картинку для скриншота
+            showToast('Сделай скриншот и добавь в Stories');
         }
 
         // Блокировка веб-версии
