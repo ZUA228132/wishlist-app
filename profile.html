@@ -165,6 +165,49 @@
             <span class="mascot mascot-small">🐻‍❄️</span> Giftly v1.0
         </p>
 
+        <!-- Story Editor Modal -->
+        <div class="modal" id="storyModal">
+            <div class="modal-overlay" onclick="closeStoryModal()"></div>
+            <div class="modal-content" style="max-height: 90vh;">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>📸 Создать историю</h2>
+                    <button class="modal-close" onclick="closeStoryModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Выбор желания -->
+                    <div class="form-group">
+                        <label class="form-label">Желание (опционально)</label>
+                        <select id="storyWishSelect" class="form-input" onchange="updateStoryCanvas()">
+                            <option value="">-- Без желания --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Выбор шаблона -->
+                    <div class="form-group">
+                        <label class="form-label">Шаблон</label>
+                        <div class="story-templates" style="display: flex; gap: 10px; overflow-x: auto; padding: 8px 0;">
+                            <div class="story-tpl active" data-bg="green" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid white;cursor:pointer;background:linear-gradient(135deg,#165B33,#0B3D2E);"></div>
+                            <div class="story-tpl" data-bg="red" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#c41e3a,#ff6b6b);"></div>
+                            <div class="story-tpl" data-bg="blue" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#4facfe,#00f2fe);"></div>
+                            <div class="story-tpl" data-bg="purple" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#667eea,#764ba2);"></div>
+                            <div class="story-tpl" data-bg="gold" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#f5af19,#f12711);"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Превью -->
+                    <div style="display:flex;justify-content:center;margin:16px 0;">
+                        <canvas id="storyCanvas" width="360" height="640" style="border-radius:16px;max-width:100%;"></canvas>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="downloadStoryImage()">📥 Скачать</button>
+                        <button type="button" class="btn btn-primary" onclick="shareStoryToTelegram()">📤 В Stories</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Privacy Modal -->
         <div class="modal" id="privacyModal">
             <div class="modal-overlay" onclick="closePrivacyModal()"></div>
@@ -312,7 +355,7 @@
             
             document.getElementById('menuStory').onclick = () => {
                 haptic.light();
-                shareToStory();
+                openStoryEditor();
             };
             
             document.getElementById('menuChat').onclick = () => {
@@ -546,6 +589,198 @@
             toast.textContent = msg;
             toast.classList.add('active');
             setTimeout(() => toast.classList.remove('active'), 2000);
+        }
+
+        // ===== STORY EDITOR =====
+        let currentStoryBg = 'green';
+        
+        function openStoryEditor() {
+            // Заполняем список желаний
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const select = document.getElementById('storyWishSelect');
+            select.innerHTML = '<option value="">-- Без желания --</option>' + 
+                wishes.filter(w => !w.reserved).map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+            
+            document.getElementById('storyModal').classList.add('active');
+            updateStoryCanvas();
+        }
+        
+        function closeStoryModal() {
+            document.getElementById('storyModal').classList.remove('active');
+        }
+        
+        function selectStoryTemplate(el) {
+            document.querySelectorAll('.story-tpl').forEach(t => t.style.borderColor = 'transparent');
+            el.style.borderColor = 'white';
+            currentStoryBg = el.dataset.bg;
+            haptic.light();
+            updateStoryCanvas();
+        }
+        
+        function updateStoryCanvas() {
+            const canvas = document.getElementById('storyCanvas');
+            const ctx = canvas.getContext('2d');
+            const w = 360, h = 640;
+            
+            // Цвета фона
+            const bgs = {
+                green: ['#165B33', '#146B3A', '#0B3D2E'],
+                red: ['#c41e3a', '#e74c3c', '#ff6b6b'],
+                blue: ['#4facfe', '#00c6fb', '#00f2fe'],
+                purple: ['#667eea', '#764ba2', '#6B73FF'],
+                gold: ['#f5af19', '#f12711', '#ff6b35']
+            };
+            const colors = bgs[currentStoryBg] || bgs.green;
+            
+            // Градиент
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, colors[0]);
+            gradient.addColorStop(0.5, colors[1]);
+            gradient.addColorStop(1, colors[2]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+            
+            // Декор
+            ctx.globalAlpha = 0.1;
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath(); ctx.arc(50, 100, 80, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(310, 550, 100, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1;
+            
+            // Заголовок
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Giftly 🎁', w/2, 140);
+            
+            // Имя
+            ctx.font = '18px -apple-system, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fillText(`Вишлист ${state.userName}`, w/2, 175);
+            
+            // Карточка
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            roundRect(ctx, 40, 210, 280, 200, 15);
+            ctx.fill();
+            
+            // Желание
+            const wishId = document.getElementById('storyWishSelect').value;
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            const wish = wishes.find(w => w.id === wishId);
+            
+            if (wish) {
+                ctx.font = '60px serif';
+                ctx.fillText('🎁', w/2, 290);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 18px -apple-system, sans-serif';
+                const name = wish.name.length > 20 ? wish.name.substring(0, 17) + '...' : wish.name;
+                ctx.fillText(name, w/2, 340);
+                
+                if (wish.price) {
+                    ctx.font = 'bold 16px -apple-system, sans-serif';
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillText(`${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency || '₽'}`, w/2, 375);
+                }
+            } else {
+                ctx.font = '80px serif';
+                ctx.fillText('🐻‍❄️', w/2, 320);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '14px -apple-system, sans-serif';
+                ctx.fillText('Создай свой список желаний!', w/2, 385);
+            }
+            
+            // CTA
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            roundRect(ctx, 80, 450, 200, 35, 18);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 13px -apple-system, sans-serif';
+            ctx.fillText('Открыть вишлист →', w/2, 473);
+            
+            // Декор
+            ctx.font = '20px serif';
+            ctx.globalAlpha = 0.3;
+            ctx.fillText('❄️', 40, 250);
+            ctx.fillText('⭐', 320, 220);
+            ctx.fillText('🎄', 40, 575);
+            ctx.fillText('✨', 310, 480);
+            ctx.globalAlpha = 1;
+            
+            // Футер
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = '12px -apple-system, sans-serif';
+            ctx.fillText(`@${state.username}`, w/2, 600);
+            
+            function roundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+        }
+        
+        function downloadStoryImage() {
+            haptic.success();
+            const canvas = document.getElementById('storyCanvas');
+            const link = document.createElement('a');
+            link.download = 'giftly-story.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('📥 Сохранено!');
+        }
+        
+        function shareStoryToTelegram() {
+            const botUsername = window.BOT_USERNAME || 'giftl_robot';
+            const botUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
+            
+            // Проверяем поддержку Stories
+            const version = tg?.version || '0.0';
+            const [major, minor] = version.split('.').map(Number);
+            const supportsStory = major > 7 || (major === 7 && minor >= 8);
+            
+            if (!tg || !supportsStory) {
+                // Fallback - скачиваем картинку
+                downloadStoryImage();
+                showToast('Добавь картинку в Stories вручную');
+                return;
+            }
+            
+            // Генерируем полноразмерную картинку для Stories (720x1280)
+            const canvas = document.createElement('canvas');
+            canvas.width = 720;
+            canvas.height = 1280;
+            const ctx = canvas.getContext('2d');
+            
+            // Копируем превью с масштабированием
+            const preview = document.getElementById('storyCanvas');
+            ctx.drawImage(preview, 0, 0, 720, 1280);
+            
+            try {
+                const base64 = canvas.toDataURL('image/png');
+                
+                tg.shareToStory(base64, {
+                    text: '🎁 Мой вишлист в Giftly!',
+                    widget_link: {
+                        url: botUrl,
+                        name: 'Открыть вишлист'
+                    }
+                });
+                haptic.success();
+                closeStoryModal();
+            } catch (e) {
+                console.error('Story error:', e);
+                showToast('Ошибка: ' + e.message);
+            }
         }
 
         // Блокировка веб-версии
