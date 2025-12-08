@@ -13,9 +13,13 @@ CREATE TABLE users (
     last_name VARCHAR(255),
     photo_url TEXT,
     privacy VARCHAR(20) DEFAULT 'public',
+    verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Если таблица уже существует, добавь колонку:
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE;
 
 -- Wishes table
 CREATE TABLE wishes (

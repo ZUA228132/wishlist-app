@@ -343,9 +343,27 @@
             requestAnimationFrame(update);
         }
 
-        function checkVerified() {
-            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
-            const isVerified = verified.some(u => u.id === state.userId);
+        async function checkVerified() {
+            const sb = window.supabaseClient;
+            let isVerified = false;
+            
+            // Проверяем в Supabase
+            if (sb && state.userId !== 'demo') {
+                try {
+                    const { data: user } = await sb
+                        .from('users')
+                        .select('verified')
+                        .eq('telegram_id', parseInt(state.userId))
+                        .single();
+                    
+                    if (user && user.verified) {
+                        isVerified = true;
+                    }
+                } catch (err) {
+                    console.error('Check verified error:', err);
+                }
+            }
+            
             document.getElementById('verifiedBadge').style.display = isVerified ? 'inline-flex' : 'none';
         }
 
@@ -566,20 +584,45 @@
             showToast('✓ Заявка отправлена!');
         }
         
-        function checkVerifyRequestStatus() {
-            const requests = JSON.parse(localStorage.getItem('verifyRequests') || '[]');
-            const myRequest = requests.find(r => r.userId === state.userId);
-            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
-            const isVerified = verified.some(u => u.id === state.userId);
-            
+        async function checkVerifyRequestStatus() {
             const statusEl = document.getElementById('verifyStatus');
-            if (isVerified) {
-                statusEl.textContent = 'Вы верифицированы ✓';
-            } else if (myRequest) {
-                if (myRequest.status === 'pending') {
-                    statusEl.textContent = 'Заявка на рассмотрении ⏳';
-                } else if (myRequest.status === 'rejected') {
-                    statusEl.textContent = 'Заявка отклонена ❌';
+            const sb = window.supabaseClient;
+            
+            // Проверяем верификацию в Supabase
+            if (sb && state.userId !== 'demo') {
+                try {
+                    // Проверяем статус пользователя
+                    const { data: user } = await sb
+                        .from('users')
+                        .select('verified')
+                        .eq('telegram_id', parseInt(state.userId))
+                        .single();
+                    
+                    if (user && user.verified) {
+                        statusEl.textContent = 'Вы верифицированы ✓';
+                        return;
+                    }
+                    
+                    // Проверяем статус заявки
+                    const { data: request } = await sb
+                        .from('verify_requests')
+                        .select('status')
+                        .eq('telegram_id', parseInt(state.userId))
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                    
+                    if (request) {
+                        if (request.status === 'pending') {
+                            statusEl.textContent = 'Заявка на рассмотрении ⏳';
+                        } else if (request.status === 'rejected') {
+                            statusEl.textContent = 'Заявка отклонена ❌';
+                        } else if (request.status === 'approved') {
+                            statusEl.textContent = 'Вы верифицированы ✓';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Check verify status error:', err);
                 }
             }
         }
@@ -625,23 +668,36 @@
             const botUsername = window.BOT_USERNAME || 'giftl_robot';
             const wishlistUrl = `https://t.me/${botUsername}?start=wishlist_${state.userId}`;
             
-            // URL готовой картинки (должна быть доступна по HTTPS)
+            // URL готовой картинки
             const storyImageUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}story-image.png`;
             
+            console.log('shareToStory available:', !!tg.shareToStory);
+            console.log('Story image URL:', storyImageUrl);
+            console.log('Wishlist URL:', wishlistUrl);
+            
             // Используем Telegram shareToStory API
-            if (tg.shareToStory) {
+            if (typeof tg.shareToStory === 'function') {
                 haptic.success();
-                tg.shareToStory(storyImageUrl, {
-                    widget_link: {
-                        url: wishlistUrl,
-                        name: 'Открыть вишлист'
-                    }
-                });
-                closeStoryModal();
-                showToast('📤 Открываем Stories...');
+                try {
+                    tg.shareToStory(storyImageUrl, {
+                        widget_link: {
+                            url: wishlistUrl,
+                            name: 'Открыть вишлист'
+                        }
+                    });
+                    closeStoryModal();
+                    showToast('📤 Открываем Stories...');
+                } catch (err) {
+                    console.error('shareToStory error:', err);
+                    showToast('Ошибка: ' + err.message);
+                }
             } else {
-                // Fallback для старых версий Telegram
-                showToast('Обнови Telegram для публикации в Stories');
+                // Fallback - открываем шеринг ссылки
+                showToast('⚠️ Stories недоступны в этой версии Telegram');
+                setTimeout(() => {
+                    const text = '🎁 Мой вишлист в Giftly!';
+                    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(wishlistUrl)}&text=${encodeURIComponent(text)}`);
+                }, 1000);
             }
         }
 

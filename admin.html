@@ -360,13 +360,19 @@
                         .single();
                     
                     if (request) {
-                        // Обновляем статус
+                        // Обновляем статус заявки
                         await supabase
                             .from('verify_requests')
                             .update({ status: 'approved' })
                             .eq('id', requestId);
                         
-                        // Добавляем в верифицированные (localStorage для совместимости)
+                        // Обновляем поле verified в таблице users
+                        await supabase
+                            .from('users')
+                            .update({ verified: true })
+                            .eq('telegram_id', request.telegram_id);
+                        
+                        // Также сохраняем в localStorage для отображения в админке
                         const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
                         verified.push({
                             id: request.telegram_id?.toString(),
@@ -558,7 +564,7 @@
         function openVerifyModal() { document.getElementById('verifyModal').classList.add('active'); }
         function closeVerifyModal() { document.getElementById('verifyModal').classList.remove('active'); }
 
-        function verifyUser() {
+        async function verifyUser() {
             const userId = document.getElementById('verifyUserId').value.trim();
             const userName = document.getElementById('verifyUserName').value.trim();
             
@@ -569,6 +575,18 @@
             if (verified.some(u => u.id === userId)) {
                 showToast('Уже верифицирован');
                 return;
+            }
+            
+            // Обновляем в Supabase
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('users')
+                        .update({ verified: true })
+                        .eq('telegram_id', parseInt(userId));
+                } catch (err) {
+                    console.error('Verify user error:', err);
+                }
             }
             
             verified.push({ id: userId, name: userName, verifiedAt: Date.now() });
