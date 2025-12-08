@@ -453,6 +453,34 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     logger.error(f"Failed to notify user {giver_id}: {e}")
             
             await update.message.reply_text("🎉 Жеребьёвка проведена! Все участники получили уведомления.")
+    
+    elif action == 'send_story_image':
+        # Отправка картинки для Stories пользователю
+        import base64
+        import io
+        
+        image_data = data.get('image', '')
+        
+        if image_data:
+            try:
+                # Убираем префикс data:image/png;base64,
+                if ',' in image_data:
+                    image_data = image_data.split(',')[1]
+                
+                # Декодируем base64
+                image_bytes = base64.b64decode(image_data)
+                
+                # Отправляем фото пользователю
+                await context.bot.send_photo(
+                    chat_id=int(user_id),
+                    photo=io.BytesIO(image_bytes),
+                    caption="📸 Твоя картинка для Stories!\n\n"
+                            "Сохрани её и добавь в Telegram Stories 🎄"
+                )
+                await update.message.reply_text("✅ Картинка отправлена в чат!")
+            except Exception as e:
+                logger.error(f"Failed to send story image: {e}")
+                await update.message.reply_text(f"❌ Ошибка: {str(e)}")
 
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка inline запросов для шаринга"""

@@ -190,8 +190,7 @@
                     </div>
                     
                     <div class="form-actions">
-                        <button type="button" class="btn btn-secondary" onclick="downloadStoryImage()">📥 Скачать</button>
-                        <button type="button" class="btn btn-primary" onclick="shareStoryToTelegram()">📤 В Stories</button>
+                        <button type="button" class="btn btn-primary" onclick="shareStoryToTelegram()" style="width: 100%;">📤 Опубликовать в Stories</button>
                     </div>
                 </div>
             </div>
@@ -578,58 +577,76 @@
             ctx.fillText(`@${state.username}`, w/2, 1070);
         }
         
-        function downloadStoryImage() {
-            haptic.success();
-            const canvas = document.getElementById('storyCanvas');
-            const link = document.createElement('a');
-            link.download = 'giftly-story.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            showToast('📥 Сохранено!');
-        }
-        
-        function shareStoryToTelegram() {
-            // Проверяем наличие Telegram WebApp и метода shareToStory
-            if (!tg || typeof tg.shareToStory !== 'function') {
-                downloadStoryImage();
-                showToast('Скачай и добавь в Stories');
+        async function shareStoryToTelegram() {
+            if (!tg) {
+                showToast('Открой в Telegram');
                 return;
             }
             
-            // Получаем canvas
+            showToast('⏳ Подготовка...');
+            
             const canvas = document.getElementById('storyCanvas');
             
-            // Конвертируем в blob и создаём URL
-            canvas.toBlob(function(blob) {
-                if (!blob) {
-                    downloadStoryImage();
-                    showToast('Ошибка, скачай картинку');
-                    return;
+            // Конвертируем canvas в blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            
+            // Загружаем в Supabase Storage
+            const sb = window.supabaseClient;
+            if (sb) {
+                try {
+                    const fileName = `stories/${state.userId}_${Date.now()}.png`;
+                    
+                    const { data, error } = await sb.storage
+                        .from('wishlist-images')
+                        .upload(fileName, blob, {
+                            contentType: 'image/png',
+                            upsert: true
+                        });
+                    
+                    if (!error && data) {
+                        // Получаем публичный URL
+                        const { data: urlData } = sb.storage
+                            .from('wishlist-images')
+                            .getPublicUrl(fileName);
+                        
+                        const imageUrl = urlData.publicUrl;
+                        console.log('Image uploaded:', imageUrl);
+                        
+                        // Публикуем в Stories через Telegram WebApp
+                        if (typeof tg.shareToStory === 'function') {
+                            tg.shareToStory(imageUrl, {
+                                text: '🎁 Мой вишлист в Giftly!',
+                                widget_link: {
+                                    url: 'https://t.me/' + (window.BOT_USERNAME || 'giftl_robot'),
+                                    name: 'Открыть Giftly'
+                                }
+                            });
+                            haptic.success();
+                            closeStoryModal();
+                            showToast('📤 Публикуем в Stories!');
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Upload error:', err);
                 }
-                
-                // Создаём File объект
-                const file = new File([blob], 'story.png', { type: 'image/png' });
-                
-                // Пробуем через Web Share API если доступен
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: 'Giftly',
-                        text: '🎁 Мой вишлист в Giftly!'
-                    }).then(() => {
-                        haptic.success();
-                        closeStoryModal();
-                        showToast('✓ Отправлено!');
-                    }).catch((err) => {
-                        console.log('Share cancelled or failed:', err);
-                        downloadStoryImage();
-                    });
+            }
+            
+            // Fallback - пробуем с base64
+            try {
+                const base64 = canvas.toDataURL('image/png');
+                if (typeof tg.shareToStory === 'function') {
+                    tg.shareToStory(base64);
+                    haptic.success();
+                    closeStoryModal();
+                    showToast('📤 Публикуем!');
                 } else {
-                    // Fallback - скачиваем
-                    downloadStoryImage();
-                    showToast('Добавь картинку в Stories');
+                    showToast('Stories недоступны в этой версии');
                 }
-            }, 'image/png');
+            } catch (e) {
+                console.error('Story error:', e);
+                showToast('Ошибка: ' + e.message);
+            }
         }
 
         // Блокировка веб-версии
