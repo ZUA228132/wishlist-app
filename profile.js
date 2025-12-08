@@ -192,6 +192,70 @@ function shareProfile() {
         shareUrl += `&photo=${encodeURIComponent(state.photoUrl)}`;
     }
     
+    // Показываем выбор: сторис или обычный шеринг
+    showShareOptions(shareUrl);
+}
+
+function showShareOptions(shareUrl) {
+    const html = `
+        <div class="menu-item" data-action="story">
+            <div class="menu-icon purple">📸</div>
+            <div class="menu-content">
+                <div class="menu-title">Поделиться в сторис</div>
+                <div class="menu-desc">Красивая картинка + кнопка</div>
+            </div>
+        </div>
+        <div class="menu-item" data-action="message">
+            <div class="menu-icon blue">💬</div>
+            <div class="menu-content">
+                <div class="menu-title">Отправить сообщением</div>
+                <div class="menu-desc">Ссылка в чат</div>
+            </div>
+        </div>
+        <div class="menu-item" data-action="copy">
+            <div class="menu-icon gold">📋</div>
+            <div class="menu-content">
+                <div class="menu-title">Скопировать ссылку</div>
+                <div class="menu-desc">В буфер обмена</div>
+            </div>
+        </div>
+    `;
+    
+    showActionSheet('Поделиться вишлистом', html, (el) => {
+        const action = el.dataset.action;
+        if (action === 'story') {
+            shareToStory(shareUrl);
+        } else if (action === 'message') {
+            shareToMessage(shareUrl);
+        } else if (action === 'copy') {
+            navigator.clipboard.writeText(shareUrl);
+            haptic.success();
+            showToast('📋 Ссылка скопирована!');
+        }
+    });
+}
+
+function shareToStory(shareUrl) {
+    // Используем готовую картинку story-image.png
+    const storyImageUrl = `${window.location.origin}${window.location.pathname.replace('profile.html', '')}story-image.png`;
+    
+    if (tg && tg.shareToStory) {
+        haptic.success();
+        tg.shareToStory(storyImageUrl, {
+            text: '🎁 Мой вишлист',
+            widget_link: {
+                url: shareUrl,
+                name: 'Открыть вишлист'
+            }
+        });
+    } else {
+        // Fallback если shareToStory недоступен
+        showToast('📸 Сторис доступны только в Telegram');
+        shareToMessage(shareUrl);
+    }
+}
+
+function shareToMessage(shareUrl) {
     const text = `🎁 Мой новогодний вишлист!\n\nВыбери что хочешь мне подарить 🎄`;
     
     if (tg) {
