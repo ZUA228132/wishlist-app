@@ -190,20 +190,25 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     db = load_data()
-    users_count = len(db.get('users', {}))
-    groups_count = len(db.get('groups', {}))
+    users = db.get('users', {})
+    groups = db.get('groups', {})
+    total_wishes = sum(len(u.get('wishes', [])) for u in users.values())
     
     keyboard = [
         [InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")],
         [InlineKeyboardButton("👥 Пользователи", callback_data="admin_users")],
-        [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")]
+        [InlineKeyboardButton("📊 Подробная статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton("🌐 Открыть админку", web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin.html"))]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        f"⚙️ Админ-панель\n\n"
-        f"👥 Пользователей: {users_count}\n"
-        f"🎅 Групп Санты: {groups_count}",
+        f"⚙️ Админ-панель Giftly\n\n"
+        f"👥 Пользователей: {len(users)}\n"
+        f"🎁 Желаний: {total_wishes}\n"
+        f"🎅 Групп Санты: {len(groups)}\n\n"
+        f"📢 Рассылка: /broadcast текст\n"
+        f"📷 С фото: ответь на фото командой",
         reply_markup=reply_markup
     )
 
@@ -226,15 +231,20 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = load_data()
     users = db.get('users', {})
     
+    if not users:
+        await update.message.reply_text("❌ Нет пользователей для рассылки")
+        return
+    
     sent = 0
     failed = 0
+    blocked = 0
     
     # Проверяем есть ли фото в ответе
     photo = None
     if update.message.reply_to_message and update.message.reply_to_message.photo:
         photo = update.message.reply_to_message.photo[-1].file_id
     
-    await update.message.reply_text(f"⏳ Начинаю рассылку {len(users)} пользователям...")
+    status_msg = await update.message.reply_text(f"⏳ Начинаю рассылку {len(users)} пользователям...")
     
     for user_id in users.keys():
         try:
@@ -242,21 +252,36 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_photo(
                     chat_id=int(user_id),
                     photo=photo,
-                    caption=message_text
+                    caption=message_text,
+                    parse_mode='HTML'
                 )
             else:
                 await context.bot.send_message(
                     chat_id=int(user_id),
-                    text=message_text
+                    text=message_text,
+                    parse_mode='HTML'
                 )
             sent += 1
+            
+            # Обновляем статус каждые 10 сообщений
+            if sent % 10 == 0:
+                try:
+                    await status_msg.edit_text(f"⏳ Отправлено: {sent}/{len(users)}...")
+                except:
+                    pass
+                    
         except Exception as e:
+            error_str = str(e).lower()
+            if 'blocked' in error_str or 'deactivated' in error_str:
+                blocked += 1
+            else:
+                failed += 1
             logger.error(f"Failed to send to {user_id}: {e}")
-            failed += 1
     
-    await update.message.reply_text(
+    await status_msg.edit_text(
         f"✅ Рассылка завершена!\n\n"
         f"📨 Отправлено: {sent}\n"
+        f"🚫 Заблокировали: {blocked}\n"
         f"❌ Ошибок: {failed}"
     )
 

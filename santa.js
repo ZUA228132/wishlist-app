@@ -152,20 +152,23 @@ function renderParticipants(group) {
     let html = '';
     group.participants.forEach(p => {
         const isYou = p.id === state.userId;
-        let badgesHtml = '';
-        if (isYou) badgesHtml += '<span style="padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; background: rgba(22,91,51,0.3); color: #4ade80;">Ты</span>';
-        if (p.isAdmin) badgesHtml += '<span style="padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; background: rgba(255,215,0,0.2); color: #FFD700;">👑</span>';
         
-        const wishBtn = isYou ? `<button style="padding: 8px 16px; background: linear-gradient(135deg, #165B33, #146B3A); border: none; border-radius: 8px; font-size: 13px; color: white; cursor: pointer;" onclick="openWishesModal()">✏️ Желания</button>` : '';
+        // Бейджи в отдельную строку
+        let badgesHtml = '';
+        if (isYou) badgesHtml += '<span class="p-badge you">Ты</span>';
+        if (p.isAdmin) badgesHtml += '<span class="p-badge admin">👑</span>';
+        
+        // Кнопка желаний только для себя
+        const wishBtn = isYou ? `<button class="p-wish-btn" onclick="openWishesModal()">✏️ Желания</button>` : '';
         
         html += `
-            <div style="display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(28,28,30,0.8); border-radius: 12px; margin-bottom: 10px; border: 0.5px solid rgba(255,255,255,0.1);">
-                <div style="width: 46px; height: 46px; min-width: 46px; border-radius: 50%; background: linear-gradient(135deg, #165B33, #146B3A); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: white;">${getInitials(p.name)}</div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 16px; font-weight: 500; color: white;">${esc(p.name)}</div>
-                    <div style="font-size: 13px; color: #8e8e93; margin-top: 2px;">${p.wishes?.length || 0} желаний</div>
+            <div class="participant-card">
+                <div class="p-avatar">${getInitials(p.name)}</div>
+                <div class="p-info">
+                    <div class="p-name">${esc(p.name)}</div>
+                    <div class="p-meta">${p.wishes?.length || 0} желаний</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                <div class="p-actions">
                     ${badgesHtml}
                     ${wishBtn}
                 </div>

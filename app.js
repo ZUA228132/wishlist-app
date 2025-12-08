@@ -12,20 +12,102 @@ const haptic = {
 
 // State
 const state = {
-    wishes: JSON.parse(localStorage.getItem('wishes') || '[]'),
-    userId: tg?.initDataUnsafe?.user?.id || 'demo_' + Math.random().toString(36).substr(2, 9),
+    wishes: [],
+    userId: null, // UUID из Supabase
+    telegramId: tg?.initDataUnsafe?.user?.id?.toString() || null,
     userName: tg?.initDataUnsafe?.user?.first_name || 'Пользователь',
-    username: tg?.initDataUnsafe?.user?.username || 'user'
+    username: tg?.initDataUnsafe?.user?.username || 'user',
+    photoUrl: tg?.initDataUnsafe?.user?.photo_url || null
 };
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await initUser();
+    await loadWishes();
     render();
     
     document.getElementById('addWishBtn').onclick = () => { haptic.medium(); openAddModal(); };
     document.getElementById('storyBtn').onclick = () => { haptic.medium(); openStoryModal(); };
     document.getElementById('wishForm').onsubmit = handleSubmit;
 });
+
+// Инициализация пользователя в Supabase
+async function initUser() {
+    if (!state.telegramId || !window.supabase) {
+        console.log('No telegram ID or supabase');
+        return;
+    }
+    
+    try {
+        // Ищем пользователя
+        const { data: existingUser } = await window.supabase
+            .from('users')
+            .select('*')
+            .eq('telegram_id', state.telegramId)
+            .single();
+        
+        if (existingUser) {
+            state.userId = existingUser.id;
+            console.log('User found:', existingUser.id);
+        } else {
+            // Создаём нового
+            const { data: newUser, error } = await window.supabase
+                .from('users')
+                .insert([{
+                    telegram_id: parseInt(state.telegramId),
+                    username: state.username,
+                    first_name: state.userName,
+                    photo_url: state.photoUrl
+                }])
+                .select()
+                .single();
+            
+            if (newUser) {
+                state.userId = newUser.id;
+                console.log('User created:', newUser.id);
+            } else {
+                console.error('Failed to create user:', error);
+            }
+        }
+    } catch (err) {
+        console.error('Init user error:', err);
+    }
+}
+
+// Загрузка желаний из Supabase
+async function loadWishes() {
+    if (!state.userId || !window.supabase) {
+        // Fallback на localStorage
+        state.wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+        return;
+    }
+    
+    try {
+        const { data, error } = await window.supabase
+            .from('wishes')
+            .select('*')
+            .eq('user_id', state.userId)
+            .order('created_at', { ascending: false });
+        
+        if (data) {
+            state.wishes = data.map(w => ({
+                id: w.id,
+                name: w.name,
+                description: w.description,
+                price: w.price,
+                currency: w.currency || '₽',
+                url: w.url,
+                photo: w.photo_url,
+                reserved: w.reserved,
+                createdAt: new Date(w.created_at).getTime()
+            }));
+            console.log('Loaded wishes:', state.wishes.length);
+        }
+    } catch (err) {
+        console.error('Load wishes error:', err);
+        state.wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+    }
+}
 
 function render() {
     const list = document.getElementById('wishesList');
@@ -107,39 +189,102 @@ window.closeAddModal = function() {
     document.getElementById('addModal').classList.remove('active');
 };
 
-function handleSubmit(e) {
+async function handleSubmit(e) {
     e.preventDefault();
     haptic.success();
     
     const id = document.getElementById('wishId').value;
     const preview = document.getElementById('photoPreview');
+    const photoUrl = preview.style.backgroundImage.replace(/url\(['"]?([^'"]+)['"]?\)/, '$1') || null;
     
-    const data = {
-        id: id || genId(),
+    const wishData = {
         name: document.getElementById('wishName').value.trim(),
         url: document.getElementById('wishUrl').value.trim(),
-        price: document.getElementById('wishPrice').value,
+        price: document.getElementById('wishPrice').value || null,
         currency: document.getElementById('wishCurrency').value,
         description: document.getElementById('wishDescription').value.trim(),
-        photo: preview.style.backgroundImage.replace(/url\(['"]?([^'"]+)['"]?\)/, '$1') || null,
-        reserved: false,
-        createdAt: id ? state.wishes.find(w => w.id === id)?.createdAt : Date.now()
+        photo: photoUrl
     };
     
-    if (id) {
-        const idx = state.wishes.findIndex(w => w.id === id);
-        if (idx !== -1) {
-            data.reserved = state.wishes[idx].reserved;
-            state.wishes[idx] = data;
+    // Сохраняем в Supabase
+    if (state.userId && window.supabase) {
+        try {
+            if (id) {
+                // Обновляем
+                const { error } = await window.supabase
+                    .from('wishes')
+                    .update({
+                        name: wishData.name,
+                        description: wishData.description,
+                        price: wishData.price,
+                        currency: wishData.currency,
+                        url: wishData.url,
+                        photo_url: wishData.photo
+                    })
+                    .eq('id', id);
+                
+                if (!error) {
+                    const idx = state.wishes.findIndex(w => w.id === id);
+                    if (idx !== -1) {
+                        state.wishes[idx] = { ...state.wishes[idx], ...wishData };
+                    }
+                    showToast('✓ Обновлено');
+                }
+            } else {
+                // Создаём новое
+                const { data: newWish, error } = await window.supabase
+                    .from('wishes')
+                    .insert([{
+                        user_id: state.userId,
+                        name: wishData.name,
+                        description: wishData.description,
+                        price: wishData.price,
+                        currency: wishData.currency,
+                        url: wishData.url,
+                        photo_url: wishData.photo
+                    }])
+                    .select()
+                    .single();
+                
+                if (newWish) {
+                    state.wishes.unshift({
+                        id: newWish.id,
+                        ...wishData,
+                        reserved: false,
+                        createdAt: Date.now()
+                    });
+                    showToast('✓ Добавлено');
+                    confetti();
+                } else {
+                    console.error('Create wish error:', error);
+                    showToast('Ошибка сохранения');
+                }
+            }
+        } catch (err) {
+            console.error('Save wish error:', err);
+            showToast('Ошибка');
         }
-        showToast('✓ Обновлено');
     } else {
-        state.wishes.unshift(data);
-        showToast('✓ Добавлено');
-        confetti();
+        // Fallback на localStorage
+        const localData = {
+            id: id || genId(),
+            ...wishData,
+            reserved: false,
+            createdAt: id ? state.wishes.find(w => w.id === id)?.createdAt : Date.now()
+        };
+        
+        if (id) {
+            const idx = state.wishes.findIndex(w => w.id === id);
+            if (idx !== -1) state.wishes[idx] = localData;
+            showToast('✓ Обновлено');
+        } else {
+            state.wishes.unshift(localData);
+            showToast('✓ Добавлено');
+            confetti();
+        }
+        saveLocal();
     }
     
-    save();
     render();
     window.closeAddModal();
 }
@@ -149,11 +294,24 @@ function editWish(id) {
     if (wish) openAddModal(wish);
 }
 
-function deleteWish(id) {
+async function deleteWish(id) {
     if (confirm('Удалить желание?')) {
         haptic.error();
+        
+        // Удаляем из Supabase
+        if (state.userId && window.supabase) {
+            try {
+                await window.supabase
+                    .from('wishes')
+                    .delete()
+                    .eq('id', id);
+            } catch (err) {
+                console.error('Delete wish error:', err);
+            }
+        }
+        
         state.wishes = state.wishes.filter(w => w.id !== id);
-        save();
+        saveLocal();
         render();
         showToast('Удалено');
     }
@@ -175,15 +333,22 @@ window.handlePhoto = function(input) {
 };
 
 // Story Modal
+let storyType = 'wish'; // 'wish' или 'text'
+
 window.openStoryModal = function() {
-    if (state.wishes.length === 0) {
-        showToast('Сначала добавь желание');
-        return;
-    }
-    
     const select = document.getElementById('storyWishSelect');
-    select.innerHTML = '<option value="">-- Выбери --</option>' + 
+    const hasWishes = state.wishes.filter(w => !w.reserved).length > 0;
+    
+    // Заполняем список желаний
+    select.innerHTML = '<option value="">-- Выбери подарок --</option>' + 
         state.wishes.filter(w => !w.reserved).map(w => `<option value="${w.id}">${esc(w.name)}</option>`).join('');
+    
+    // Если нет желаний - переключаем на текст
+    if (!hasWishes) {
+        selectStoryType('text');
+    } else {
+        selectStoryType('wish');
+    }
     
     document.getElementById('storyUsername').textContent = `@${state.username}`;
     document.getElementById('storyModal').classList.add('active');
@@ -191,6 +356,32 @@ window.openStoryModal = function() {
 
 window.closeStoryModal = function() {
     document.getElementById('storyModal').classList.remove('active');
+};
+
+window.selectStoryType = function(type) {
+    storyType = type;
+    haptic.light();
+    
+    // Обновляем табы
+    document.querySelectorAll('.story-type-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.type === type);
+    });
+    
+    // Показываем нужные поля
+    document.getElementById('wishSelectGroup').style.display = type === 'wish' ? 'block' : 'none';
+    document.getElementById('textInputGroup').style.display = type === 'text' ? 'block' : 'none';
+    
+    // Показываем нужный контент в превью
+    document.getElementById('storyWishCard').style.display = type === 'wish' ? 'block' : 'none';
+    document.getElementById('storyTextDisplay').style.display = type === 'text' ? 'flex' : 'none';
+    
+    updateStoryPreview();
+};
+
+window.setStoryText = function(text) {
+    document.getElementById('storyTextInput').value = text;
+    updateStoryPreview();
+    haptic.light();
 };
 
 window.selectTemplate = function(el) {
@@ -201,45 +392,85 @@ window.selectTemplate = function(el) {
     const bg = el.dataset.bg;
     const preview = document.getElementById('storyPreview');
     const gradients = {
-        purple: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        warm: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        green: 'linear-gradient(135deg, #165B33 0%, #146B3A 50%, #0B3D2E 100%)',
+        warm: 'linear-gradient(135deg, #c41e3a 0%, #ff6b6b 100%)',
         cool: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        green: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+        purple: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         sunset: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
     };
-    preview.style.background = gradients[bg] || gradients.purple;
+    preview.style.background = gradients[bg] || gradients.green;
 };
 
 window.updateStoryPreview = function() {
-    const wishId = document.getElementById('storyWishSelect').value;
-    const wish = state.wishes.find(w => w.id === wishId);
-    
-    document.getElementById('storyWishName').textContent = wish ? wish.name : 'Выбери желание';
-    document.getElementById('storyWishPrice').textContent = wish?.price ? `${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}` : '💫';
-    haptic.light();
+    if (storyType === 'wish') {
+        const wishId = document.getElementById('storyWishSelect').value;
+        const wish = state.wishes.find(w => w.id === wishId);
+        
+        document.getElementById('storyWishName').textContent = wish ? wish.name : 'Выбери желание';
+        document.getElementById('storyWishPrice').textContent = wish?.price ? `${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}` : '💫';
+    } else {
+        const text = document.getElementById('storyTextInput').value || 'Загадай желание!';
+        document.getElementById('storyTextContent').textContent = text;
+    }
 };
 
-window.downloadStory = async function() {
+window.shareStory = async function() {
     haptic.medium();
     const preview = document.getElementById('storyPreview');
     
+    // Проверяем что выбрано
+    if (storyType === 'wish' && !document.getElementById('storyWishSelect').value) {
+        showToast('Выбери желание');
+        return;
+    }
+    
     try {
         showToast('⏳ Создаём...');
-        const canvas = await html2canvas(preview, { scale: 2, backgroundColor: null, useCORS: true });
-        const link = document.createElement('a');
-        link.download = 'giftly-story.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        haptic.success();
-        showToast('✓ Сохранено');
+        
+        // Генерируем картинку
+        const canvas = await html2canvas(preview, { 
+            scale: 2, 
+            backgroundColor: null, 
+            useCORS: true,
+            logging: false
+        });
+        
+        // Конвертируем в blob
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        
+        // Пробуем поделиться через Telegram Stories API
+        if (tg?.shareToStory) {
+            const base64 = canvas.toDataURL('image/png');
+            const userId = state.userId;
+            const shareUrl = `https://t.me/${window.BOT_USERNAME || 'giftl_robot'}?start=wishlist_${userId}`;
+            
+            tg.shareToStory(base64, {
+                widget_link: {
+                    url: shareUrl,
+                    name: 'Открыть вишлист'
+                }
+            });
+            haptic.success();
+            showToast('✓ Открываем Stories');
+            closeStoryModal();
+        } else {
+            // Fallback - скачиваем картинку
+            const link = document.createElement('a');
+            link.download = 'giftly-story.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            haptic.success();
+            showToast('✓ Сохранено! Добавь в Stories');
+        }
     } catch (err) {
-        showToast('Ошибка');
+        console.error('Story error:', err);
+        showToast('Ошибка создания');
     }
 };
 
 // Utils
-function save() { localStorage.setItem('wishes', JSON.stringify(state.wishes)); }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+function saveLocal() { localStorage.setItem('wishes', JSON.stringify(state.wishes)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substring(2); }
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function showToast(msg) { 
     const toast = document.getElementById('toast');

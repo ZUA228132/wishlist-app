@@ -164,21 +164,41 @@
                     <button class="modal-close" onclick="closeStoryModal()">×</button>
                 </div>
                 <div class="modal-body">
+                    <!-- Выбор типа -->
+                    <div class="story-type-tabs">
+                        <button class="story-type-tab active" data-type="wish" onclick="selectStoryType('wish')">🎁 Желание</button>
+                        <button class="story-type-tab" data-type="text" onclick="selectStoryType('text')">✨ Надпись</button>
+                    </div>
+                    
+                    <!-- Шаблоны -->
                     <div class="story-templates">
-                        <div class="story-template active" data-bg="purple" onclick="selectTemplate(this)"></div>
+                        <div class="story-template active" data-bg="green" onclick="selectTemplate(this)"></div>
                         <div class="story-template" data-bg="warm" onclick="selectTemplate(this)"></div>
                         <div class="story-template" data-bg="cool" onclick="selectTemplate(this)"></div>
-                        <div class="story-template" data-bg="green" onclick="selectTemplate(this)"></div>
+                        <div class="story-template" data-bg="purple" onclick="selectTemplate(this)"></div>
                         <div class="story-template" data-bg="sunset" onclick="selectTemplate(this)"></div>
                     </div>
                     
-                    <div class="form-group">
+                    <!-- Выбор желания -->
+                    <div class="form-group" id="wishSelectGroup">
                         <label class="form-label">Желание</label>
                         <select id="storyWishSelect" class="form-input" onchange="updateStoryPreview()">
-                            <option value="">-- Выбери --</option>
+                            <option value="">-- Выбери подарок --</option>
                         </select>
                     </div>
+                    
+                    <!-- Ввод надписи -->
+                    <div class="form-group" id="textInputGroup" style="display: none;">
+                        <label class="form-label">Надпись</label>
+                        <input type="text" id="storyTextInput" class="form-input" placeholder="Загадай желание!" oninput="updateStoryPreview()" maxlength="50">
+                        <div class="story-text-presets">
+                            <button type="button" class="preset-btn" onclick="setStoryText('Загадай желание! 🌟')">Загадай желание!</button>
+                            <button type="button" class="preset-btn" onclick="setStoryText('Мой вишлист 🎁')">Мой вишлист</button>
+                            <button type="button" class="preset-btn" onclick="setStoryText('Хочу на НГ! 🎄')">Хочу на НГ!</button>
+                        </div>
+                    </div>
 
+                    <!-- Превью -->
                     <div class="story-preview" id="storyPreview">
                         <div class="story-preview-inner">
                             <div class="story-decoration top-left">🎁</div>
@@ -188,9 +208,13 @@
                             
                             <div class="story-title">Giftly 🎁</div>
                             
-                            <div class="story-wish-card">
+                            <div class="story-wish-card" id="storyWishCard">
                                 <div class="story-wish-name" id="storyWishName">Выбери желание</div>
                                 <div class="story-wish-price" id="storyWishPrice">💫</div>
+                            </div>
+                            
+                            <div class="story-text-display" id="storyTextDisplay" style="display: none;">
+                                <span id="storyTextContent">Загадай желание!</span>
                             </div>
                             
                             <div class="story-footer">
@@ -202,7 +226,7 @@
 
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="closeStoryModal()">Отмена</button>
-                        <button type="button" class="btn btn-primary" onclick="downloadStory()">📥 Скачать</button>
+                        <button type="button" class="btn btn-primary" onclick="shareStory()">📤 Поделиться</button>
                     </div>
                 </div>
             </div>

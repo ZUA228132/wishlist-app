@@ -188,15 +188,19 @@
 
         const ADMIN_ID = '7086128174';
         const currentUserId = tg?.initDataUnsafe?.user?.id?.toString();
+        
+        // Supabase клиент
+        const supabase = window.supabase?.createClient(
+            'https://vmyzknraixtqvsceaujd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZteXprbnJhaXh0cXZzY2VhdWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODU0NzAsImV4cCI6MjA4MDc2MTQ3MH0.ame1hcZVX__x3WqREK18LJiAM9CuuQdS8FnbKIWMH1c'
+        );
 
-        // Check admin access - СТРОГАЯ проверка, только через Telegram
+        // Check admin access
         function checkAccess() {
-            // Проверяем что открыто через Telegram и пользователь - админ
             const isTelegram = tg && tg.initDataUnsafe?.user;
             const isAdmin = isTelegram && currentUserId === ADMIN_ID;
             
             if (!isTelegram) {
-                // Если не через Telegram - показываем блок
                 document.body.innerHTML = `
                     <div style="position: fixed; inset: 0; background: linear-gradient(180deg, #1e3a5f 0%, #2d4a6f 50%, #1a2f4a 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
                         <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
@@ -219,19 +223,55 @@
                 loadStats();
                 loadVerifiedUsers();
                 loadActivity();
+                
+                // Подписка на realtime обновления
+                subscribeToRealtime();
             }
         }
 
-        function loadStats() {
-            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
-            const groups = JSON.parse(localStorage.getItem('santaGroups') || '[]');
-            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
-            const gifted = wishes.filter(w => w.reserved).length;
-            
-            document.getElementById('totalUsers').textContent = verified.length || 1;
-            document.getElementById('totalWishes').textContent = wishes.length;
-            document.getElementById('totalGroups').textContent = groups.length;
-            document.getElementById('totalGifted').textContent = gifted;
+        // Загрузка статистики из Supabase
+        async function loadStats() {
+            try {
+                // Пользователи
+                const { data: users, error: usersErr } = await supabase
+                    .from('users')
+                    .select('id', { count: 'exact' });
+                
+                // Желания
+                const { data: wishes, error: wishesErr } = await supabase
+                    .from('wishes')
+                    .select('id, reserved', { count: 'exact' });
+                
+                // Группы Санты
+                const { data: groups, error: groupsErr } = await supabase
+                    .from('santa_groups')
+                    .select('id', { count: 'exact' });
+                
+                // Обновляем UI
+                document.getElementById('totalUsers').textContent = users?.length || 0;
+                document.getElementById('totalWishes').textContent = wishes?.length || 0;
+                document.getElementById('totalGroups').textContent = groups?.length || 0;
+                document.getElementById('totalGifted').textContent = wishes?.filter(w => w.reserved)?.length || 0;
+                
+            } catch (err) {
+                console.error('Stats error:', err);
+                // Fallback на localStorage
+                const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+                const groups = JSON.parse(localStorage.getItem('santaGroups') || '[]');
+                document.getElementById('totalWishes').textContent = wishes.length;
+                document.getElementById('totalGroups').textContent = groups.length;
+            }
+        }
+        
+        // Realtime подписка
+        function subscribeToRealtime() {
+            // Подписка на изменения пользователей
+            supabase
+                .channel('admin-stats')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => loadStats())
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'wishes' }, () => loadStats())
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'santa_groups' }, () => loadStats())
+                .subscribe();
         }
 
         function loadVerifiedUsers() {
@@ -312,24 +352,30 @@
             const message = document.getElementById('broadcastMessage').value.trim();
             if (!message) { showToast('Введите сообщение'); return; }
             
-            showToast('⏳ Отправка...');
+            // Копируем команду для бота
+            const command = `/broadcast ${message}`;
             
-            // Получаем список пользователей из localStorage (в реальном приложении - из базы)
-            const verified = JSON.parse(localStorage.getItem('verifiedUsers') || '[]');
-            
-            // Отправляем через Telegram WebApp если доступно
-            if (tg && tg.sendData) {
-                const data = {
-                    action: 'broadcast',
-                    message: message,
-                    photo: broadcastPhotoData,
-                    recipients: verified.map(u => u.id)
-                };
-                tg.sendData(JSON.stringify(data));
+            try {
+                await navigator.clipboard.writeText(command);
+                showToast('📋 Команда скопирована!');
+                
+                // Показываем инструкцию
+                setTimeout(() => {
+                    alert(
+                        '📢 Рассылка через бота:\n\n' +
+                        '1. Команда скопирована в буфер\n' +
+                        '2. Откройте бота @giftl_robot\n' +
+                        '3. Вставьте команду и отправьте\n\n' +
+                        'Если нужно фото - ответьте на фото командой /broadcast'
+                    );
+                }, 500);
+                
+            } catch (err) {
+                // Если не удалось скопировать - показываем команду
+                alert(`Отправьте боту команду:\n\n${command}`);
             }
             
             logActivity('broadcast', `Рассылка: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
-            showToast('✅ Рассылка отправлена');
             closeBroadcastModal();
             document.getElementById('broadcastMessage').value = '';
             broadcastPhotoData = null;
