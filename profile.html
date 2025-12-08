@@ -184,9 +184,9 @@
                         </select>
                     </div>
                     
-                    <!-- Превью -->
+                    <!-- Превью (720x1280 масштабируется для отображения) -->
                     <div style="display:flex;justify-content:center;margin:16px 0;">
-                        <canvas id="storyCanvas" width="360" height="640" style="border-radius:16px;max-width:100%;box-shadow: 0 8px 32px rgba(0,0,0,0.3);"></canvas>
+                        <canvas id="storyCanvas" width="720" height="1280" style="border-radius:16px;max-width:100%;height:auto;max-height:400px;box-shadow: 0 8px 32px rgba(0,0,0,0.3);"></canvas>
                     </div>
                     
                     <div class="form-actions">
@@ -500,7 +500,7 @@
         function updateStoryCanvas() {
             const canvas = document.getElementById('storyCanvas');
             const ctx = canvas.getContext('2d');
-            const w = 360, h = 640;
+            const w = 720, h = 1280; // Полный размер Stories
             
             // Очищаем canvas
             ctx.clearRect(0, 0, w, h);
@@ -521,15 +521,15 @@
         function drawStoryContent(ctx, w, h) {
             ctx.textAlign = 'center';
             
-            // Заголовок "Giftly" - в верхней части карточки
+            // Заголовок "Giftly" - в верхней части карточки (масштаб x2)
             ctx.fillStyle = '#2d5a3d';
-            ctx.font = 'bold 28px -apple-system, sans-serif';
-            ctx.fillText('Giftly 🎁', w/2, 155);
+            ctx.font = 'bold 56px -apple-system, sans-serif';
+            ctx.fillText('Giftly 🎁', w/2, 310);
             
             // Имя пользователя
-            ctx.font = '16px -apple-system, sans-serif';
+            ctx.font = '32px -apple-system, sans-serif';
             ctx.fillStyle = '#3d6b4d';
-            ctx.fillText(`Вишлист ${state.userName}`, w/2, 185);
+            ctx.fillText(`Вишлист ${state.userName}`, w/2, 370);
             
             // Желание - в центре карточки
             const wishId = document.getElementById('storyWishSelect').value;
@@ -538,40 +538,40 @@
             
             if (wish) {
                 // Эмодзи подарка
-                ctx.font = '50px serif';
-                ctx.fillText('🎁', w/2, 290);
+                ctx.font = '100px serif';
+                ctx.fillText('🎁', w/2, 560);
                 
                 // Название желания
                 ctx.fillStyle = '#2d5a3d';
-                ctx.font = 'bold 16px -apple-system, sans-serif';
+                ctx.font = 'bold 36px -apple-system, sans-serif';
                 const name = wish.name.length > 22 ? wish.name.substring(0, 19) + '...' : wish.name;
-                ctx.fillText(name, w/2, 340);
+                ctx.fillText(name, w/2, 660);
                 
                 // Цена
                 if (wish.price) {
-                    ctx.font = 'bold 18px -apple-system, sans-serif';
+                    ctx.font = 'bold 40px -apple-system, sans-serif';
                     ctx.fillStyle = '#c9a227';
-                    ctx.fillText(`${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency || '₽'}`, w/2, 375);
+                    ctx.fillText(`${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency || '₽'}`, w/2, 730);
                 }
             } else {
                 // Мишка если нет желания
-                ctx.font = '70px serif';
-                ctx.fillText('🐻‍❄️', w/2, 310);
+                ctx.font = '140px serif';
+                ctx.fillText('🐻‍❄️', w/2, 600);
                 
                 ctx.fillStyle = '#2d5a3d';
-                ctx.font = '14px -apple-system, sans-serif';
-                ctx.fillText('Создай свой список желаний!', w/2, 380);
+                ctx.font = '28px -apple-system, sans-serif';
+                ctx.fillText('Создай свой список желаний!', w/2, 740);
             }
             
             // Кнопка CTA - внизу
             ctx.fillStyle = '#2d5a3d';
-            ctx.font = 'bold 14px -apple-system, sans-serif';
-            ctx.fillText('Открыть вишлист →', w/2, 505);
+            ctx.font = 'bold 28px -apple-system, sans-serif';
+            ctx.fillText('Открыть вишлист →', w/2, 1000);
             
             // Username внизу
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.font = '12px -apple-system, sans-serif';
-            ctx.fillText(`@${state.username}`, w/2, 600);
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = '24px -apple-system, sans-serif';
+            ctx.fillText(`@${state.username}`, w/2, 1200);
         }
         
         function downloadStoryImage() {
@@ -585,65 +585,42 @@
         }
         
         function shareStoryToTelegram() {
+            const botUsername = window.BOT_USERNAME || 'giftl_robot';
+            const linkUrl = 'https://t.me/' + botUsername + '?start=wishlist_' + state.userId;
+            
+            // Проверяем наличие Telegram WebApp
+            if (!tg) {
+                downloadStoryImage();
+                showToast('Открой в Telegram для публикации');
+                return;
+            }
+            
+            // Получаем canvas напрямую (уже 720x1280)
+            const canvas = document.getElementById('storyCanvas');
+            const base64Data = canvas.toDataURL('image/png');
+            
+            // Публикуем в Stories
             try {
-                const botUsername = window.BOT_USERNAME || 'giftl_robot';
-                const linkUrl = 'https://t.me/' + botUsername + '?start=wishlist_' + state.userId;
-                
-                // Проверяем поддержку Stories
-                const version = tg?.version || '0.0';
-                const versionParts = version.split('.').map(Number);
-                const major = versionParts[0] || 0;
-                const minor = versionParts[1] || 0;
-                const supportsStory = major > 7 || (major === 7 && minor >= 8);
-                
-                if (!tg || !supportsStory) {
-                    // Fallback - скачиваем картинку
-                    downloadStoryImage();
-                    showToast('Добавь картинку в Stories вручную');
-                    return;
-                }
-                
-                // Генерируем полноразмерную картинку для Stories (720x1280)
-                const fullCanvas = document.createElement('canvas');
-                fullCanvas.width = 720;
-                fullCanvas.height = 1280;
-                const fullCtx = fullCanvas.getContext('2d');
-                
-                // Копируем превью с масштабированием
-                const preview = document.getElementById('storyCanvas');
-                fullCtx.drawImage(preview, 0, 0, 720, 1280);
-                
-                const base64Data = fullCanvas.toDataURL('image/png');
-                
-                // Параметры для shareToStory
-                const storyParams = {
-                    text: '🎁 Мой вишлист в Giftly!\n\nОткрой и выбери подарок 🎄',
+                tg.shareToStory(base64Data, {
+                    text: '🎁 Мой вишлист в Giftly!',
                     widget_link: {
                         url: linkUrl,
                         name: 'Открыть вишлист'
                     }
-                };
-                
-                console.log('Sharing story with params:', storyParams);
-                
-                tg.shareToStory(base64Data, storyParams);
+                });
                 haptic.success();
                 closeStoryModal();
+                showToast('📤 Публикуем в Stories...');
             } catch (e) {
                 console.error('Story error:', e);
-                // Пробуем без widget_link если ошибка
+                // Пробуем без widget_link
                 try {
-                    const fallbackCanvas = document.getElementById('storyCanvas');
-                    const fallbackBase64 = fallbackCanvas.toDataURL('image/png');
-                    tg.shareToStory(fallbackBase64, {
-                        text: '🎁 Мой вишлист в Giftly!'
-                    });
+                    tg.shareToStory(base64Data);
                     haptic.success();
                     closeStoryModal();
                 } catch (e2) {
-                    console.error('Fallback story error:', e2);
-                    downloadStoryImage();
-                    showToast('Скачай и добавь в Stories');
+                    console.error('Story error 2:', e2);
+                    showToast('Ошибка: ' + (e2.message || e.message));
                 }
             }
         }
