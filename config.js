@@ -8,13 +8,20 @@ const SUPABASE_URL = 'https://vmyzknraixtqvsceaujd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZteXprbnJhaXh0cXZzY2VhdWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODU0NzAsImV4cCI6MjA4MDc2MTQ3MH0.ame1hcZVX__x3WqREK18LJiAM9CuuQdS8FnbKIWMH1c';
 
 // Initialize Supabase Client
-const supabase = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// window.supabase - это библиотека из CDN
+// supabaseClient - наш клиент для работы с базой
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Делаем клиент доступным глобально
+window.supabaseClient = supabaseClient;
+
+console.log('Supabase initialized:', !!supabaseClient);
 
 // Database API
 const db = {
     // Users
     async getUser(telegramId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('users')
             .select('*')
             .eq('telegram_id', telegramId)
@@ -23,7 +30,7 @@ const db = {
     },
 
     async createUser(userData) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('users')
             .insert([userData])
             .select()
@@ -32,7 +39,7 @@ const db = {
     },
 
     async updateUser(telegramId, updates) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('users')
             .update(updates)
             .eq('telegram_id', telegramId)
@@ -43,7 +50,7 @@ const db = {
 
     // Wishes
     async getWishes(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('wishes')
             .select('*')
             .eq('user_id', userId)
@@ -52,7 +59,7 @@ const db = {
     },
 
     async getWishesByTelegramId(telegramId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('wishes')
             .select('*, users!inner(telegram_id)')
             .eq('users.telegram_id', telegramId)
@@ -61,7 +68,7 @@ const db = {
     },
 
     async createWish(wishData) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('wishes')
             .insert([wishData])
             .select()
@@ -70,7 +77,7 @@ const db = {
     },
 
     async updateWish(wishId, updates) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('wishes')
             .update(updates)
             .eq('id', wishId)
@@ -80,7 +87,7 @@ const db = {
     },
 
     async deleteWish(wishId) {
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('wishes')
             .delete()
             .eq('id', wishId);
@@ -88,7 +95,7 @@ const db = {
     },
 
     async reserveWish(wishId, reservedBy) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('wishes')
             .update({ reserved: true, reserved_by: reservedBy })
             .eq('id', wishId)
@@ -99,7 +106,7 @@ const db = {
 
     // Santa Groups
     async getGroups(userId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_participants')
             .select('santa_groups(*)')
             .eq('user_id', userId);
@@ -107,7 +114,7 @@ const db = {
     },
 
     async getGroup(groupId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_groups')
             .select('*, santa_participants(*, users(*))')
             .eq('id', groupId)
@@ -116,7 +123,7 @@ const db = {
     },
 
     async createGroup(groupData) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_groups')
             .insert([groupData])
             .select()
@@ -125,7 +132,7 @@ const db = {
     },
 
     async joinGroup(groupId, userId) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_participants')
             .insert([{ group_id: groupId, user_id: userId }])
             .select()
@@ -134,7 +141,7 @@ const db = {
     },
 
     async updateParticipantWishes(groupId, userId, wishes) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_participants')
             .update({ wishes })
             .eq('group_id', groupId)
@@ -145,7 +152,7 @@ const db = {
     },
 
     async shuffleGroup(groupId, assignments) {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('santa_groups')
             .update({ shuffled: true, assignments })
             .eq('id', groupId)
@@ -156,13 +163,13 @@ const db = {
 
     // Upload image to Supabase Storage
     async uploadImage(file, path) {
-        const { data, error } = await supabase.storage
+        const { data, error } = await supabaseClient.storage
             .from('wishlist-images')
             .upload(path, file);
         
         if (error) return { error };
         
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = supabaseClient.storage
             .from('wishlist-images')
             .getPublicUrl(path);
         

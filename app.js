@@ -33,25 +33,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Инициализация пользователя в Supabase
 async function initUser() {
-    if (!state.telegramId || !window.supabase) {
-        console.log('No telegram ID or supabase');
+    const sb = window.supabaseClient;
+    
+    console.log('initUser - telegramId:', state.telegramId, 'supabase:', !!sb);
+    
+    if (!state.telegramId || !sb) {
+        console.log('No telegram ID or supabase client');
         return;
     }
     
     try {
         // Ищем пользователя
-        const { data: existingUser } = await window.supabase
+        const { data: existingUser, error: findError } = await sb
             .from('users')
             .select('*')
             .eq('telegram_id', state.telegramId)
             .single();
+        
+        console.log('Find user result:', existingUser, findError);
         
         if (existingUser) {
             state.userId = existingUser.id;
             console.log('User found:', existingUser.id);
         } else {
             // Создаём нового
-            const { data: newUser, error } = await window.supabase
+            console.log('Creating new user...');
+            const { data: newUser, error } = await sb
                 .from('users')
                 .insert([{
                     telegram_id: parseInt(state.telegramId),
@@ -61,6 +68,8 @@ async function initUser() {
                 }])
                 .select()
                 .single();
+            
+            console.log('Create user result:', newUser, error);
             
             if (newUser) {
                 state.userId = newUser.id;
@@ -76,18 +85,22 @@ async function initUser() {
 
 // Загрузка желаний из Supabase
 async function loadWishes() {
-    if (!state.userId || !window.supabase) {
-        // Fallback на localStorage
+    const sb = window.supabaseClient;
+    
+    if (!state.userId || !sb) {
+        console.log('loadWishes - no userId or supabase, using localStorage');
         state.wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
         return;
     }
     
     try {
-        const { data, error } = await window.supabase
+        const { data, error } = await sb
             .from('wishes')
             .select('*')
             .eq('user_id', state.userId)
             .order('created_at', { ascending: false });
+        
+        console.log('Load wishes result:', data, error);
         
         if (data) {
             state.wishes = data.map(w => ({
@@ -206,12 +219,15 @@ async function handleSubmit(e) {
         photo: photoUrl
     };
     
+    const sb = window.supabaseClient;
+    
     // Сохраняем в Supabase
-    if (state.userId && window.supabase) {
+    if (state.userId && sb) {
         try {
             if (id) {
                 // Обновляем
-                const { error } = await window.supabase
+                console.log('Updating wish:', id);
+                const { error } = await sb
                     .from('wishes')
                     .update({
                         name: wishData.name,
@@ -223,16 +239,21 @@ async function handleSubmit(e) {
                     })
                     .eq('id', id);
                 
+                console.log('Update result:', error);
+                
                 if (!error) {
                     const idx = state.wishes.findIndex(w => w.id === id);
                     if (idx !== -1) {
                         state.wishes[idx] = { ...state.wishes[idx], ...wishData };
                     }
                     showToast('✓ Обновлено');
+                } else {
+                    showToast('Ошибка: ' + error.message);
                 }
             } else {
                 // Создаём новое
-                const { data: newWish, error } = await window.supabase
+                console.log('Creating wish for user:', state.userId);
+                const { data: newWish, error } = await sb
                     .from('wishes')
                     .insert([{
                         user_id: state.userId,
@@ -246,6 +267,8 @@ async function handleSubmit(e) {
                     .select()
                     .single();
                 
+                console.log('Create wish result:', newWish, error);
+                
                 if (newWish) {
                     state.wishes.unshift({
                         id: newWish.id,
@@ -257,14 +280,15 @@ async function handleSubmit(e) {
                     confetti();
                 } else {
                     console.error('Create wish error:', error);
-                    showToast('Ошибка сохранения');
+                    showToast('Ошибка: ' + (error?.message || 'неизвестная'));
                 }
             }
         } catch (err) {
             console.error('Save wish error:', err);
-            showToast('Ошибка');
+            showToast('Ошибка: ' + err.message);
         }
     } else {
+        console.log('No supabase, saving to localStorage. userId:', state.userId, 'sb:', !!sb);
         // Fallback на localStorage
         const localData = {
             id: id || genId(),
@@ -298,13 +322,16 @@ async function deleteWish(id) {
     if (confirm('Удалить желание?')) {
         haptic.error();
         
+        const sb = window.supabaseClient;
+        
         // Удаляем из Supabase
-        if (state.userId && window.supabase) {
+        if (state.userId && sb) {
             try {
-                await window.supabase
+                const { error } = await sb
                     .from('wishes')
                     .delete()
                     .eq('id', id);
+                console.log('Delete result:', error);
             } catch (err) {
                 console.error('Delete wish error:', err);
             }
