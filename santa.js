@@ -156,14 +156,16 @@ function renderParticipants(group) {
         if (p.isAdmin) badges.push('<span class="participant-badge admin">👑</span>');
         
         return `
-            <div class="participant-item">
-                <div class="participant-avatar">${getInitials(p.name)}</div>
-                <div class="participant-info">
-                    <div class="participant-name">${esc(p.name)}</div>
-                    <div class="participant-meta">${p.wishes?.length || 0} желаний</div>
+            <div class="participant-item" style="display: flex; align-items: center; gap: 12px; padding: 14px; background: rgba(28,28,30,0.8); border-radius: 12px; margin-bottom: 10px; border: 0.5px solid rgba(255,255,255,0.1);">
+                <div class="participant-avatar" style="width: 46px; height: 46px; min-width: 46px; border-radius: 50%; background: linear-gradient(135deg, #165B33, #146B3A); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: white;">${getInitials(p.name)}</div>
+                <div class="participant-info" style="flex: 1; min-width: 0;">
+                    <div class="participant-name" style="font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(p.name)}</div>
+                    <div class="participant-meta" style="font-size: 14px; color: #8e8e93;">${p.wishes?.length || 0} желаний</div>
                 </div>
-                ${badges.join('')}
-                ${isYou ? `<button class="btn btn-text" onclick="openWishesModal()">✏️</button>` : ''}
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    ${badges.join('')}
+                    ${isYou ? `<button class="btn" style="padding: 8px 12px; background: rgba(22,91,51,0.3); border-radius: 8px; font-size: 14px;" onclick="openWishesModal()">✏️ Желания</button>` : ''}
+                </div>
             </div>
         `;
     }).join('');

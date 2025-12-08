@@ -187,12 +187,30 @@
         if (tg) { tg.ready(); tg.expand(); }
 
         const ADMIN_ID = '7086128174';
-        const currentUserId = tg?.initDataUnsafe?.user?.id?.toString() || 'demo';
+        const currentUserId = tg?.initDataUnsafe?.user?.id?.toString();
 
-        // Check admin access
+        // Check admin access - СТРОГАЯ проверка, только через Telegram
         function checkAccess() {
-            // Allow demo access for testing, or check real Telegram ID
-            const isAdmin = currentUserId === ADMIN_ID || currentUserId === 'demo';
+            // Проверяем что открыто через Telegram и пользователь - админ
+            const isTelegram = tg && tg.initDataUnsafe?.user;
+            const isAdmin = isTelegram && currentUserId === ADMIN_ID;
+            
+            if (!isTelegram) {
+                // Если не через Telegram - показываем блок
+                document.body.innerHTML = `
+                    <div style="position: fixed; inset: 0; background: linear-gradient(180deg, #1e3a5f 0%, #2d4a6f 50%, #1a2f4a 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
+                        <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
+                        <h1 style="color: white; font-size: 28px; margin-bottom: 16px;">Доступ запрещён</h1>
+                        <p style="color: rgba(255,255,255,0.8); font-size: 16px; margin-bottom: 32px;">
+                            Админ-панель доступна только через Telegram
+                        </p>
+                        <a href="https://t.me/giftl_robot" style="background: linear-gradient(135deg, #165B33, #146B3A); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600;">
+                            📱 Открыть в Telegram
+                        </a>
+                    </div>
+                `;
+                return;
+            }
             
             document.getElementById('accessDenied').style.display = isAdmin ? 'none' : 'block';
             document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';

@@ -9,6 +9,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+    <!-- Web Block Overlay -->
+    <div id="webBlock" style="display: none; position: fixed; inset: 0; z-index: 9999; background: linear-gradient(180deg, #1e3a5f 0%, #2d4a6f 50%, #1a2f4a 100%); align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
+        <div style="font-size: 80px; margin-bottom: 20px;">🎅</div>
+        <h1 style="color: white; font-size: 28px; margin-bottom: 16px;">Тайный Санта</h1>
+        <p style="color: rgba(255,255,255,0.8); font-size: 16px; margin-bottom: 32px; max-width: 300px;">
+            Это приложение работает только внутри Telegram. Откройте бота, чтобы начать!
+        </p>
+        <a href="https://t.me/giftl_robot" style="background: linear-gradient(135deg, #165B33, #146B3A); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            📱 Открыть в Telegram
+        </a>
+    </div>
+
     <!-- Ambient Background -->
     <div class="ambient-bg">
         <div class="ambient-orb"></div>
@@ -17,8 +29,8 @@
         <div class="ambient-orb"></div>
     </div>
 
-    <div class="app">
-        <nav class="bottom-nav">
+    <div class="app" id="mainApp">
+        <nav class="bottom-nav" id="bottomNav">
             <a href="index.html" class="nav-item">
                 <span class="nav-icon">🎁</span>
                 <span class="nav-label">Желания</span>
@@ -184,6 +196,17 @@
     </div>
 
     <script src="config.js"></script>
+    <script>
+        // Блокировка веб-версии
+        const tgCheck = window.Telegram?.WebApp;
+        if (!tgCheck || !tgCheck.initDataUnsafe?.user) {
+            document.getElementById('webBlock').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('bottomNav').style.display = 'none';
+        } else {
+            document.getElementById('webBlock').style.display = 'none';
+        }
+    </script>
     <script src="santa.js"></script>
 </body>
 </html>
