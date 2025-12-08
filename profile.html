@@ -178,27 +178,15 @@
                 <div class="modal-body">
                     <!-- Выбор желания -->
                     <div class="form-group">
-                        <label class="form-label">Желание (опционально)</label>
+                        <label class="form-label">Выбери желание для Stories</label>
                         <select id="storyWishSelect" class="form-input" onchange="updateStoryCanvas()">
                             <option value="">-- Без желания --</option>
                         </select>
                     </div>
                     
-                    <!-- Выбор шаблона -->
-                    <div class="form-group">
-                        <label class="form-label">Шаблон</label>
-                        <div class="story-templates" style="display: flex; gap: 10px; overflow-x: auto; padding: 8px 0;">
-                            <div class="story-tpl active" data-bg="green" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid white;cursor:pointer;background:linear-gradient(135deg,#165B33,#0B3D2E);"></div>
-                            <div class="story-tpl" data-bg="red" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#c41e3a,#ff6b6b);"></div>
-                            <div class="story-tpl" data-bg="blue" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#4facfe,#00f2fe);"></div>
-                            <div class="story-tpl" data-bg="purple" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#667eea,#764ba2);"></div>
-                            <div class="story-tpl" data-bg="gold" onclick="selectStoryTemplate(this)" style="width:54px;height:76px;border-radius:12px;border:2px solid transparent;cursor:pointer;background:linear-gradient(135deg,#f5af19,#f12711);"></div>
-                        </div>
-                    </div>
-                    
                     <!-- Превью -->
                     <div style="display:flex;justify-content:center;margin:16px 0;">
-                        <canvas id="storyCanvas" width="360" height="640" style="border-radius:16px;max-width:100%;"></canvas>
+                        <canvas id="storyCanvas" width="360" height="640" style="border-radius:16px;max-width:100%;box-shadow: 0 8px 32px rgba(0,0,0,0.3);"></canvas>
                     </div>
                     
                     <div class="form-actions">
@@ -449,8 +437,6 @@
         }
 
         // ===== STORY EDITOR =====
-        let currentStoryBg = 'green';
-        
         async function openStoryEditor() {
             // Заполняем список желаний - сначала пробуем из Supabase
             let wishes = [];
@@ -507,124 +493,85 @@
             document.getElementById('storyModal').classList.remove('active');
         }
         
-        function selectStoryTemplate(el) {
-            document.querySelectorAll('.story-tpl').forEach(t => t.style.borderColor = 'transparent');
-            el.style.borderColor = 'white';
-            currentStoryBg = el.dataset.bg;
-            haptic.light();
-            updateStoryCanvas();
-        }
+        // Загружаем фоновую картинку один раз
+        const storyBgImage = new Image();
+        storyBgImage.src = 'story-image.png';
         
         function updateStoryCanvas() {
             const canvas = document.getElementById('storyCanvas');
             const ctx = canvas.getContext('2d');
             const w = 360, h = 640;
             
-            // Цвета фона
-            const bgs = {
-                green: ['#165B33', '#146B3A', '#0B3D2E'],
-                red: ['#c41e3a', '#e74c3c', '#ff6b6b'],
-                blue: ['#4facfe', '#00c6fb', '#00f2fe'],
-                purple: ['#667eea', '#764ba2', '#6B73FF'],
-                gold: ['#f5af19', '#f12711', '#ff6b35']
-            };
-            const colors = bgs[currentStoryBg] || bgs.green;
+            // Очищаем canvas
+            ctx.clearRect(0, 0, w, h);
             
-            // Градиент
-            const gradient = ctx.createLinearGradient(0, 0, 0, h);
-            gradient.addColorStop(0, colors[0]);
-            gradient.addColorStop(0.5, colors[1]);
-            gradient.addColorStop(1, colors[2]);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, w, h);
-            
-            // Декор
-            ctx.globalAlpha = 0.1;
-            ctx.fillStyle = '#FFD700';
-            ctx.beginPath(); ctx.arc(50, 100, 80, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(310, 550, 100, 0, Math.PI * 2); ctx.fill();
-            ctx.globalAlpha = 1;
-            
-            // Заголовок
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 32px -apple-system, sans-serif';
+            // Рисуем фоновую картинку
+            if (storyBgImage.complete) {
+                ctx.drawImage(storyBgImage, 0, 0, w, h);
+                drawStoryContent(ctx, w, h);
+            } else {
+                // Если картинка ещё не загружена - ждём
+                storyBgImage.onload = () => {
+                    ctx.drawImage(storyBgImage, 0, 0, w, h);
+                    drawStoryContent(ctx, w, h);
+                };
+            }
+        }
+        
+        function drawStoryContent(ctx, w, h) {
             ctx.textAlign = 'center';
-            ctx.fillText('Giftly 🎁', w/2, 140);
             
-            // Имя
-            ctx.font = '18px -apple-system, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.9)';
-            ctx.fillText(`Вишлист ${state.userName}`, w/2, 175);
+            // Заголовок "Giftly" - в верхней части карточки
+            ctx.fillStyle = '#2d5a3d';
+            ctx.font = 'bold 28px -apple-system, sans-serif';
+            ctx.fillText('Giftly 🎁', w/2, 155);
             
-            // Карточка
-            ctx.fillStyle = 'rgba(255,255,255,0.15)';
-            roundRect(ctx, 40, 210, 280, 200, 15);
-            ctx.fill();
+            // Имя пользователя
+            ctx.font = '16px -apple-system, sans-serif';
+            ctx.fillStyle = '#3d6b4d';
+            ctx.fillText(`Вишлист ${state.userName}`, w/2, 185);
             
-            // Желание
+            // Желание - в центре карточки
             const wishId = document.getElementById('storyWishSelect').value;
             const wishes = window.storyWishes || JSON.parse(localStorage.getItem('wishes') || '[]');
             const wish = wishes.find(w => w.id === wishId || w.id === parseInt(wishId));
             
             if (wish) {
-                ctx.font = '60px serif';
+                // Эмодзи подарка
+                ctx.font = '50px serif';
                 ctx.fillText('🎁', w/2, 290);
                 
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 18px -apple-system, sans-serif';
-                const name = wish.name.length > 20 ? wish.name.substring(0, 17) + '...' : wish.name;
+                // Название желания
+                ctx.fillStyle = '#2d5a3d';
+                ctx.font = 'bold 16px -apple-system, sans-serif';
+                const name = wish.name.length > 22 ? wish.name.substring(0, 19) + '...' : wish.name;
                 ctx.fillText(name, w/2, 340);
                 
+                // Цена
                 if (wish.price) {
-                    ctx.font = 'bold 16px -apple-system, sans-serif';
-                    ctx.fillStyle = '#FFD700';
+                    ctx.font = 'bold 18px -apple-system, sans-serif';
+                    ctx.fillStyle = '#c9a227';
                     ctx.fillText(`${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency || '₽'}`, w/2, 375);
                 }
             } else {
-                ctx.font = '80px serif';
-                ctx.fillText('🐻‍❄️', w/2, 320);
+                // Мишка если нет желания
+                ctx.font = '70px serif';
+                ctx.fillText('🐻‍❄️', w/2, 310);
                 
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = '#2d5a3d';
                 ctx.font = '14px -apple-system, sans-serif';
-                ctx.fillText('Создай свой список желаний!', w/2, 385);
+                ctx.fillText('Создай свой список желаний!', w/2, 380);
             }
             
-            // CTA
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            roundRect(ctx, 80, 450, 200, 35, 18);
-            ctx.fill();
+            // Кнопка CTA - внизу
+            ctx.fillStyle = '#2d5a3d';
+            ctx.font = 'bold 14px -apple-system, sans-serif';
+            ctx.fillText('Открыть вишлист →', w/2, 505);
             
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 13px -apple-system, sans-serif';
-            ctx.fillText('Открыть вишлист →', w/2, 473);
-            
-            // Декор
-            ctx.font = '20px serif';
-            ctx.globalAlpha = 0.3;
-            ctx.fillText('❄️', 40, 250);
-            ctx.fillText('⭐', 320, 220);
-            ctx.fillText('🎄', 40, 575);
-            ctx.fillText('✨', 310, 480);
-            ctx.globalAlpha = 1;
-            
-            // Футер
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            // Username внизу
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
             ctx.font = '12px -apple-system, sans-serif';
             ctx.fillText(`@${state.username}`, w/2, 600);
-            
-            function roundRect(ctx, x, y, w, h, r) {
-                ctx.beginPath();
-                ctx.moveTo(x + r, y);
-                ctx.lineTo(x + w - r, y);
-                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-                ctx.lineTo(x + w, y + h - r);
-                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                ctx.lineTo(x + r, y + h);
-                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-                ctx.lineTo(x, y + r);
-                ctx.quadraticCurveTo(x, y, x + r, y);
-                ctx.closePath();
-            }
         }
         
         function downloadStoryImage() {
