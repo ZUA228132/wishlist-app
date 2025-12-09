@@ -215,31 +215,34 @@ window.closeShareModal = function() {
 
 function createCard(wish) {
     const img = wish.photo 
-        ? `<img src="${wish.photo}" class="card-image" loading="lazy">` 
+        ? `<img src="${wish.photo}" class="card-image" loading="lazy" alt="${esc(wish.name)}">` 
         : `<div class="card-image-placeholder">🎁</div>`;
-    const price = wish.price ? `<span class="card-price">${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}</span>` : '';
-    const link = wish.url ? `<a href="${wish.url}" target="_blank" style="color: #007aff; font-size: 14px; text-decoration: none; display: block; margin-bottom: 8px;">🔗 Где купить</a>` : '';
-    const desc = wish.description ? `<p class="card-subtitle">${esc(wish.description)}</p>` : '';
     
-    // Статус "кто-то хочет подарить"
-    const reservedBadge = wish.reserved 
-        ? `<div style="background: #34c759; color: white; padding: 10px 16px; border-radius: 12px; text-align: center; margin-top: 12px; font-weight: 600; font-size: 14px;">🎁 Кто-то хочет подарить!</div>`
+    const price = wish.price 
+        ? `<span class="card-price">${Number(wish.price).toLocaleString('ru-RU')} ${wish.currency}</span>` 
+        : '';
+    
+    const link = wish.url 
+        ? `<a href="${wish.url}" target="_blank" class="card-link">🔗 Где купить</a>` 
+        : '';
+    
+    const desc = wish.description 
+        ? `<p class="card-subtitle">${esc(wish.description)}</p>` 
         : '';
     
     return `
         <div class="card ${wish.reserved ? 'reserved' : ''}" data-id="${wish.id}">
             ${img}
             <div class="card-body">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
+                <div class="card-header-row">
                     <h3 class="card-title">${esc(wish.name)}</h3>
                     ${price}
                 </div>
                 ${desc}
                 ${link}
-                ${reservedBadge}
                 <div class="card-actions">
                     ${!wish.reserved ? `
-                    <button class="btn btn-secondary btn-edit">✏️</button>
+                    <button class="btn btn-secondary btn-edit">✏️ Изменить</button>
                     <button class="btn btn-danger btn-delete">🗑️</button>
                     ` : ''}
                     <button class="btn btn-secondary btn-share" style="flex: 1;">📤 Поделиться</button>

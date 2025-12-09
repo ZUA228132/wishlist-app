@@ -31,7 +31,45 @@ const state = {
     completedTasks: []
 };
 
-// Задания загружаются из Supabase (добавляются через админку)
+// Дефолтные задания (всегда доступны)
+const DEFAULT_TASKS = [
+    {
+        id: 'daily_bonus',
+        type: 'daily',
+        icon: '🎁',
+        title: 'Ежедневный бонус',
+        description: 'Заходи каждый день и получай билетик',
+        reward: 1
+    },
+    {
+        id: 'add_first_wish',
+        type: 'action',
+        icon: '⭐',
+        title: 'Добавь желание',
+        description: 'Создай своё первое желание в вишлисте',
+        reward: 2,
+        link: 'add_wish'
+    },
+    {
+        id: 'share_story',
+        type: 'action',
+        icon: '📸',
+        title: 'Поделись в Stories',
+        description: 'Опубликуй свой вишлист в сторис',
+        reward: 3,
+        link: 'share_story'
+    },
+    {
+        id: 'invite_friend',
+        type: 'referral',
+        icon: '👥',
+        title: 'Пригласи друга',
+        description: 'Отправь ссылку другу и получи билетик',
+        reward: 2
+    }
+];
+
+// Задания загружаются из Supabase + дефолтные
 let TASKS = [];
 
 async function init() {
@@ -45,39 +83,51 @@ async function init() {
 
 async function loadTasks() {
     const sb = window.supabaseClient;
-    if (!sb) {
-        // Fallback на localStorage
-        TASKS = JSON.parse(localStorage.getItem('adminTasks') || '[]').filter(t => t.active !== false);
-        return;
+    
+    // Начинаем с дефолтных заданий
+    TASKS = [...DEFAULT_TASKS];
+    
+    // Добавляем задания из localStorage (админка)
+    const localTasks = JSON.parse(localStorage.getItem('adminTasks') || '[]').filter(t => t.active !== false);
+    if (localTasks.length > 0) {
+        TASKS = [...TASKS, ...localTasks];
     }
+    
+    // Пробуем загрузить из Supabase
+    if (sb) {
+        try {
+            const { data, error } = await sb
+                .from('tasks')
+                .select('*')
+                .eq('active', true)
+                .order('created_at', { ascending: false });
 
-    try {
-        const { data, error } = await sb
-            .from('tasks')
-            .select('*')
-            .eq('active', true)
-            .order('created_at', { ascending: false });
-
-        if (data && !error) {
-            TASKS = data.map(t => ({
-                id: t.id,
-                type: t.type,
-                icon: t.icon || '📋',
-                title: t.title,
-                description: t.description,
-                reward: t.reward || 1,
-                link: t.link,
-                channelId: t.link?.startsWith('@') ? t.link : (t.link?.includes('t.me/') ? '@' + t.link.split('t.me/')[1] : null),
-                action: t.type === 'daily' ? 'daily' : (t.type === 'referral' ? 'invite' : null)
-            }));
+            if (data && !error && data.length > 0) {
+                const supabaseTasks = data.map(t => ({
+                    id: t.id,
+                    type: t.type,
+                    icon: t.icon || '📋',
+                    title: t.title,
+                    description: t.description,
+                    reward: t.reward || 1,
+                    link: t.link,
+                    channelId: t.link?.startsWith('@') ? t.link : (t.link?.includes('t.me/') ? '@' + t.link.split('t.me/')[1] : null)
+                }));
+                // Добавляем задания из базы к дефолтным
+                TASKS = [...DEFAULT_TASKS, ...supabaseTasks];
+            }
+        } catch (err) {
+            console.error('Load tasks error:', err);
         }
-    } catch (err) {
-        console.error('Load tasks error:', err);
-        TASKS = JSON.parse(localStorage.getItem('adminTasks') || '[]').filter(t => t.active !== false);
     }
 }
 
 async function loadUserData() {
+    // Загружаем локальные данные
+    state.tickets = parseInt(localStorage.getItem('userTickets') || '0');
+    state.completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '[]');
+    document.getElementById('ticketsCount').textContent = state.tickets;
+    
     const sb = window.supabaseClient;
     if (!sb || !state.telegramId) return;
 
@@ -91,11 +141,12 @@ async function loadUserData() {
 
         if (user) {
             state.userId = user.id;
-            state.tickets = user.tickets || 0;
+            // Берём максимум из локального и серверного
+            state.tickets = Math.max(state.tickets, user.tickets || 0);
             document.getElementById('ticketsCount').textContent = state.tickets;
         }
 
-        // Получаем выполненные задания
+        // Получаем выполненные задания из базы
         if (state.userId) {
             const { data: completed } = await sb
                 .from('completed_tasks')
@@ -103,7 +154,9 @@ async function loadUserData() {
                 .eq('user_id', state.userId);
 
             if (completed) {
-                state.completedTasks = completed.map(c => c.task_id);
+                // Объединяем локальные и серверные
+                const serverTasks = completed.map(c => c.task_id);
+                state.completedTasks = [...new Set([...state.completedTasks, ...serverTasks])];
             }
         }
     } catch (err) {
@@ -127,24 +180,37 @@ function renderTasks() {
     list.innerHTML = TASKS.map(task => {
         const isCompleted = state.completedTasks.includes(task.id);
         const isDaily = task.type === 'daily';
-        const canClaimDaily = isDaily && canClaimDailyReward();
+        const canClaimDaily = canClaimDailyReward();
+        
+        // Для ежедневного бонуса - проверяем можно ли забрать сегодня
+        // Для остальных - проверяем выполнено ли вообще
+        let showDoneButton = false;
+        let isDisabled = false;
+        
+        if (isDaily) {
+            // Ежедневный бонус - показываем галочку если уже забрали сегодня
+            showDoneButton = !canClaimDaily;
+            isDisabled = !canClaimDaily;
+        } else {
+            // Обычное задание - показываем галочку если выполнено
+            showDoneButton = isCompleted;
+            isDisabled = isCompleted;
+        }
         
         return `
-            <div class="task-card ${isCompleted && !isDaily ? 'completed' : ''}" data-id="${task.id}">
+            <div class="task-card ${isDisabled ? 'completed' : ''}" data-id="${task.id}">
                 <div class="task-icon">${task.icon}</div>
                 <div class="task-content">
                     <div class="task-title">${task.title}</div>
-                    <div class="task-desc">${task.description}</div>
+                    <div class="task-desc">${isDaily && !canClaimDaily ? 'Приходи завтра!' : task.description}</div>
                 </div>
                 <div class="task-reward">
                     <span class="reward-tickets">+${task.reward}</span>
                     <span class="reward-icon">🎟️</span>
                 </div>
-                ${isCompleted && !isDaily ? 
+                ${showDoneButton ? 
                     '<button class="task-btn done">✓</button>' : 
-                    isDaily && !canClaimDaily ?
-                    '<button class="task-btn done">✓</button>' :
-                    `<button class="task-btn" onclick="startTask('${task.id}')">→</button>`
+                    `<button class="task-btn" onclick="window.startTask('${task.id}')">→</button>`
                 }
             </div>
         `;
@@ -160,7 +226,8 @@ function canClaimDailyReward() {
     return lastDate.toDateString() !== now.toDateString();
 }
 
-async function startTask(taskId) {
+// Экспортируем функцию в window для onclick
+window.startTask = async function(taskId) {
     haptic.medium();
     const task = TASKS.find(t => t.id === taskId);
     if (!task) return;
@@ -247,7 +314,7 @@ window.closeVerifyModal = function() {
     if (modal) modal.remove();
 };
 
-async function verifySubscription(taskId) {
+window.verifySubscription = async function(taskId) {
     const task = TASKS.find(t => t.id === taskId);
     if (!task) return;
 
@@ -331,7 +398,13 @@ async function claimReward(task) {
     }
 
     state.tickets += task.reward;
-    state.completedTasks.push(task.id);
+    if (!state.completedTasks.includes(task.id)) {
+        state.completedTasks.push(task.id);
+    }
+    
+    // Сохраняем локально
+    localStorage.setItem('userTickets', state.tickets.toString());
+    localStorage.setItem('completedTasks', JSON.stringify(state.completedTasks));
     
     document.getElementById('ticketsCount').textContent = state.tickets;
     

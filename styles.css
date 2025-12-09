@@ -304,62 +304,209 @@ der Buttons - Glass Pills */
     letter-spacing: 0.2px;
 }
 
-/* Cards - Glass */
+/* Cards - Premium Liquid Glass */
 .section { padding: 14px; }
 
 .card {
-    background: var(--glass-bg-strong);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: var(--radius-lg);
+    background: linear-gradient(180deg, 
+        rgba(255, 255, 255, 0.9) 0%, 
+        rgba(255, 255, 255, 0.75) 100%
+    );
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border-radius: var(--radius-xl);
     overflow: hidden;
-    margin-bottom: 14px;
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.card-image { width: 100%; height: 180px; object-fit: cover; }
+.card:active {
+    transform: scale(0.98);
+    box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.06),
+        0 2px 8px rgba(0, 0, 0, 0.03),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* Shimmer effect on card */
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+    );
+    transition: left 0.6s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.card:hover::before {
+    left: 100%;
+}
+
+.card-image { 
+    width: 100%; 
+    height: 200px; 
+    object-fit: cover;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
 
 .card-image-placeholder {
     width: 100%;
-    height: 140px;
-    background: linear-gradient(135deg, rgba(168, 230, 207, 0.5) 0%, rgba(220, 237, 193, 0.5) 100%);
+    height: 160px;
+    background: linear-gradient(135deg, 
+        rgba(168, 230, 207, 0.6) 0%, 
+        rgba(200, 240, 220, 0.5) 50%,
+        rgba(220, 237, 193, 0.6) 100%
+    );
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 48px;
+    font-size: 56px;
+    position: relative;
+    overflow: hidden;
 }
 
-.card-body { padding: 14px 16px; }
-.card-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
-.card-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4; }
+/* Animated gradient background for placeholder */
+.card-image-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, 
+        transparent 30%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 70%
+    );
+    animation: placeholder-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes placeholder-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.card-body { 
+    padding: 18px 20px; 
+    position: relative;
+}
+
+.card-title { 
+    font-size: 18px; 
+    font-weight: 700; 
+    margin-bottom: 6px; 
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+}
+
+.card-subtitle { 
+    font-size: 14px; 
+    color: var(--text-secondary); 
+    margin-bottom: 12px; 
+    line-height: 1.5;
+}
 
 .card-price {
-    background: var(--gradient-gold);
+    background: linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ff9f0a 100%);
     color: white;
-    padding: 5px 12px;
+    padding: 6px 14px;
     border-radius: var(--radius-pill);
-    font-size: 13px;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(255, 159, 10, 0.3);
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 
+        0 4px 12px rgba(255, 159, 10, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.card-price::before {
+    content: '💰';
+    font-size: 12px;
 }
 
 .card-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(200, 200, 200, 0.3);
 }
 
 .card-actions .btn { 
-    padding: 8px 12px;
-    font-size: 13px;
+    padding: 10px 14px;
+    font-size: 14px;
+    border-radius: 12px;
 }
 
+.card-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Reserved Card - Special Glow */
 .card.reserved { 
-    border: 2px solid var(--ios-green);
-    background: linear-gradient(180deg, rgba(48, 209, 88, 0.1) 0%, var(--glass-bg-strong) 100%);
+    border: 2px solid rgba(48, 209, 88, 0.6);
+    background: linear-gradient(180deg, 
+        rgba(48, 209, 88, 0.08) 0%, 
+        rgba(255, 255, 255, 0.85) 30%,
+        rgba(255, 255, 255, 0.75) 100%
+    );
+    box-shadow: 
+        0 12px 40px rgba(48, 209, 88, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        0 0 0 4px rgba(48, 209, 88, 0.1);
+}
+
+/* Reserved Badge */
+.card.reserved .card-body::before {
+    content: '🎁 Кто-то хочет подарить!';
+    display: block;
+    background: linear-gradient(135deg, #30d158 0%, #34c759 100%);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(48, 209, 88, 0.3);
+}
+
+/* Link Button */
+.card a[href] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ios-blue);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 8px 14px;
+    background: rgba(0, 122, 255, 0.08);
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+
+.card a[href]:active {
+    background: rgba(0, 122, 255, 0.15);
 }
 
 /* B
@@ -1851,4 +1998,374 @@ ts Grid */
 
 .list-item:active { 
     background: rgba(255, 255, 255, 0.5);
+}
+
+
+/* ===== SANTA ROOMS - Liquid Glass ===== */
+
+/* Group Card - Enhanced Glass */
+.group-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
+}
+
+.group-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #30d158, #34c759, #30d158);
+    opacity: 0.6;
+}
+
+.group-card:active { 
+    transform: scale(0.98);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.group-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 10px; 
+}
+
+.group-name { 
+    font-size: 18px; 
+    font-weight: 700; 
+    color: var(--text-primary);
+}
+
+.group-badge { 
+    padding: 6px 12px; 
+    border-radius: var(--radius-pill); 
+    font-size: 12px; 
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.group-badge.ready { 
+    background: rgba(48, 209, 88, 0.2); 
+    color: #1a8d3e;
+    border-color: rgba(48, 209, 88, 0.3);
+}
+
+.group-badge.waiting { 
+    background: rgba(255, 159, 10, 0.2); 
+    color: #c77800;
+    border-color: rgba(255, 159, 10, 0.3);
+}
+
+.group-badge.done { 
+    background: rgba(0, 122, 255, 0.2); 
+    color: #0066cc;
+    border-color: rgba(0, 122, 255, 0.3);
+}
+
+.group-meta { 
+    display: flex; 
+    gap: 16px; 
+    color: var(--text-secondary); 
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Participant Card - Liquid Glass */
+.participant-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: transform 0.15s;
+}
+
+.participant-card:active {
+    transform: scale(0.98);
+}
+
+.p-avatar {
+    width: 48px; 
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(168, 230, 207, 0.9) 0%, rgba(129, 199, 132, 0.9) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a5a2e;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.p-info { 
+    flex: 1; 
+    min-width: 0; 
+    overflow: hidden; 
+}
+
+.p-name { 
+    font-size: 16px; 
+    font-weight: 600; 
+    color: var(--text-primary); 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.p-meta { 
+    font-size: 13px; 
+    color: var(--text-secondary); 
+    margin-top: 2px; 
+}
+
+.p-actions { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-end; 
+    gap: 6px; 
+    flex-shrink: 0; 
+}
+
+.p-badge { 
+    padding: 4px 10px; 
+    border-radius: 8px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.p-badge.you { 
+    background: rgba(48, 209, 88, 0.2); 
+    color: #1a8d3e;
+    border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+.p-badge.admin { 
+    background: rgba(255, 214, 10, 0.25); 
+    color: #b8860b;
+    border: 1px solid rgba(255, 214, 10, 0.4);
+}
+
+.p-wish-btn {
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #30d158 0%, #34c759 100%);
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(48, 209, 88, 0.3);
+    transition: transform 0.15s;
+}
+
+.p-wish-btn:active {
+    transform: scale(0.95);
+}
+
+/* Result Card - Liquid Glass Gradient */
+.result-card {
+    background: linear-gradient(135deg, 
+        rgba(255, 107, 107, 0.85) 0%, 
+        rgba(255, 142, 83, 0.85) 100%
+    );
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    text-align: center;
+    margin: 16px;
+    box-shadow: 
+        0 16px 48px rgba(255, 107, 107, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.result-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.result-label { 
+    font-size: 15px; 
+    color: rgba(255, 255, 255, 0.9); 
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.result-name { 
+    font-size: 28px; 
+    font-weight: 800; 
+    margin-bottom: 16px; 
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
+}
+
+/* Detail View Header */
+#detailView .header {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Back Button - Glass */
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-sm);
+    color: var(--ios-blue);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.back-btn:active {
+    transform: scale(0.95);
+}
+
+/* Invite Section - Glass */
+#detailView .form-input {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+/* Admin Section */
+#adminSection .btn {
+    box-shadow: 0 8px 24px rgba(48, 209, 88, 0.25);
+}
+
+/* Empty Groups State */
+#emptyGroups {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    padding: 40px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    margin-top: 16px;
+}
+
+
+/* Card Header Row */
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+/* Card Link - Glass Button */
+.card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ios-blue);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 10px 16px;
+    background: rgba(0, 122, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin-bottom: 4px;
+    transition: background 0.2s, transform 0.15s;
+    border: 1px solid rgba(0, 122, 255, 0.15);
+}
+
+.card-link:active {
+    background: rgba(0, 122, 255, 0.2);
+    transform: scale(0.97);
+}
+
+/* Edit Button with text */
+.card-actions .btn-edit {
+    flex: 1;
+}
+
+/* Empty State - Enhanced */
+.empty-state {
+    text-align: center;
+    padding: 60px 24px;
+    display: none;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    margin: 20px 0;
+}
+
+.empty-state.active { display: block; }
+
+.empty-icon { 
+    font-size: 72px; 
+    margin-bottom: 16px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+.empty-state h3 { 
+    font-size: 22px; 
+    font-weight: 700; 
+    margin-bottom: 8px; 
+    color: var(--text-primary);
+}
+
+.empty-state p { 
+    color: var(--text-secondary); 
+    font-size: 15px;
+    line-height: 1.5;
 }
