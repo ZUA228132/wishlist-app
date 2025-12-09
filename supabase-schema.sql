@@ -147,3 +147,75 @@ CREATE POLICY "Anyone can update verify request" ON verify_requests FOR UPDATE U
 
 -- Storage bucket for images (run in Supabase Dashboard > Storage)
 -- CREATE BUCKET wishlist-images WITH public = true;
+
+
+-- ===== TICKETS SYSTEM =====
+
+-- Добавляем поле tickets в users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tickets INTEGER DEFAULT 0;
+
+-- Выполненные задания
+CREATE TABLE IF NOT EXISTS completed_tasks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    task_id VARCHAR(100) NOT NULL,
+    reward INTEGER DEFAULT 0,
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, task_id)
+);
+
+-- Билетики пользователей (для розыгрыша)
+CREATE TABLE IF NOT EXISTS user_tickets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    source VARCHAR(100), -- откуда получен билет (task_id)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    used_in_raffle UUID -- ID розыгрыша если использован
+);
+
+-- Розыгрыши
+CREATE TABLE IF NOT EXISTS raffles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    prize_type VARCHAR(50) DEFAULT 'nft', -- nft, gift, etc
+    prize_value TEXT, -- описание приза
+    start_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    end_date TIMESTAMP WITH TIME ZONE,
+    winner_id UUID REFERENCES users(id),
+    status VARCHAR(20) DEFAULT 'active', -- active, completed, cancelled
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Рефералы
+CREATE TABLE IF NOT EXISTS referrals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    referrer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    referred_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    rewarded BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(referred_id)
+);
+
+-- Индексы
+CREATE INDEX IF NOT EXISTS idx_completed_tasks_user ON completed_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_tickets_user ON user_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+
+-- RLS
+ALTER TABLE completed_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE raffles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view completed_tasks" ON completed_tasks FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert completed_tasks" ON completed_tasks FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can view user_tickets" ON user_tickets FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert user_tickets" ON user_tickets FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can view raffles" ON raffles FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can view referrals" ON referrals FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert referrals" ON referrals FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update referrals" ON referrals FOR UPDATE USING (true);

@@ -207,22 +207,28 @@ der Buttons - Glass Pills */
     50% { transform: translateY(-4px) rotate(3deg); }
 }
 
-/* Tab Bar - Glass */
+/* Tab Bar - Liquid Glass Floating Pills */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: var(--glass-bg-strong);
-    backdrop-filter: var(--glass-blur-strong);
-    -webkit-backdrop-filter: var(--glass-blur-strong);
-    border-top: 1px solid var(--glass-border);
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: auto;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 28px;
     display: flex;
-    justify-content: space-around;
-    align-items: flex-start;
-    padding-top: 8px;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 4px;
     z-index: 1000;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .nav-item {
@@ -231,15 +237,29 @@ der Buttons - Glass Pills */
     align-items: center;
     text-decoration: none;
     color: var(--text-secondary);
-    min-width: 70px;
-    padding: 6px;
-    transition: color 0.2s, transform 0.2s;
+    padding: 8px 14px;
+    border-radius: 20px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
 
-.nav-item:active { transform: scale(0.95); }
-.nav-item.active { color: var(--ios-green); }
-.nav-icon { font-size: 24px; margin-bottom: 2px; }
-.nav-label { font-size: 10px; font-weight: 500; }
+.nav-item:active { transform: scale(0.92); }
+
+.nav-item.active {
+    color: white;
+    background: linear-gradient(135deg, rgba(48, 209, 88, 0.9) 0%, rgba(52, 199, 89, 0.9) 100%);
+    box-shadow: 
+        0 4px 12px rgba(48, 209, 88, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.nav-icon { font-size: 22px; line-height: 1; }
+.nav-label { 
+    font-size: 9px; 
+    font-weight: 600; 
+    margin-top: 2px;
+    letter-spacing: 0.2px;
+}
 
 /* Cards - Glass */
 .section { padding: 14px; }
@@ -1095,3 +1115,328 @@ uttons - Glass Pills */
 }
 
 .btn-icon:active { transform: scale(0.92); }
+
+/
+* ===== TICKETS PAGE ===== */
+
+/* Tickets Header */
+.tickets-header {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 159, 10, 0.3) 100%);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 30px 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.tickets-balance {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.ticket-icon-big {
+    font-size: 56px;
+    animation: ticket-float 2s ease-in-out infinite;
+}
+
+@keyframes ticket-float {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-8px) rotate(5deg); }
+}
+
+.tickets-info { text-align: left; }
+
+.tickets-count {
+    font-size: 48px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffd700 0%, #ff9f0a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+}
+
+.tickets-label {
+    font-size: 16px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.tickets-hint {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+/* Prize Banner */
+.prize-banner {
+    background: linear-gradient(135deg, rgba(191, 90, 242, 0.2) 0%, rgba(100, 210, 255, 0.2) 100%);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--glass-shadow);
+}
+
+.prize-icon {
+    font-size: 40px;
+    animation: prize-pulse 2s ease-in-out infinite;
+}
+
+@keyframes prize-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.prize-info { flex: 1; }
+.prize-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.prize-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+.prize-timer {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ios-purple);
+    border: 1px solid var(--glass-border);
+}
+
+/* Tasks List */
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-card {
+    background: var(--glass-bg-strong);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.task-card:active {
+    transform: scale(0.98);
+}
+
+.task-card.completed {
+    opacity: 0.6;
+}
+
+.task-icon {
+    font-size: 32px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+}
+
+.task-content { flex: 1; }
+.task-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.task-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+.task-reward {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 159, 10, 0.2) 100%);
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+}
+
+.reward-tickets {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+.reward-icon { font-size: 16px; }
+
+.task-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--gradient-accent);
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(48, 209, 88, 0.3);
+    transition: transform 0.15s;
+}
+
+.task-btn:active { transform: scale(0.9); }
+
+.task-btn.done {
+    background: var(--glass-bg);
+    color: var(--ios-green);
+    box-shadow: none;
+    border: 1px solid var(--glass-border);
+}
+
+.task-skeleton {
+    height: 76px;
+    background: linear-gradient(90deg, var(--glass-bg) 25%, var(--glass-bg-strong) 50%, var(--glass-bg) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: var(--radius);
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Ticke
+ts Grid */
+.tickets-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.ticket-card {
+    width: 70px;
+    height: 90px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ff9f0a 100%);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(255, 159, 10, 0.3);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+
+.ticket-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -5px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-primary);
+    border-radius: 50%;
+}
+
+.ticket-card::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -5px;
+    width: 10px;
+    height: 10px;
+    background: var(--bg-primary);
+    border-radius: 50%;
+}
+
+.ticket-card:hover {
+    transform: scale(1.05) rotate(2deg);
+}
+
+.ticket-inner {
+    text-align: center;
+}
+
+.ticket-emoji {
+    font-size: 28px;
+    margin-bottom: 4px;
+}
+
+.ticket-number {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.5);
+    font-family: monospace;
+}
+
+.tickets-more {
+    width: 70px;
+    height: 90px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px dashed var(--glass-border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.empty-tickets {
+    width: 100%;
+    padding: 40px 20px;
+    text-align: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.empty-tickets span:first-child {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty-tickets span:last-child {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Flying Ticket Animation */
+.flying-ticket {
+    position: fixed;
+    font-size: 40px;
+    bottom: 100px;
+    z-index: 9999;
+    animation: fly-up 1.5s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes fly-up {
+    0% {
+        transform: translateY(0) rotate(0deg) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-300px) rotate(360deg) scale(0.5);
+        opacity: 0;
+    }
+}

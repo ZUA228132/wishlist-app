@@ -59,11 +59,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Проверяем параметры (для deep linking)
     args = context.args
     
+    # Обработка реферальной ссылки
+    if args and args[0].startswith('ref_'):
+        referrer_id = args[0].replace('ref_', '')
+        if referrer_id != user_id:
+            # Сохраняем реферала
+            if 'referrals' not in db:
+                db['referrals'] = {}
+            if user_id not in db['referrals']:
+                db['referrals'][user_id] = {
+                    'referrer': referrer_id,
+                    'rewarded': False
+                }
+                save_data(db)
+                logger.info(f"New referral: {user_id} from {referrer_id}")
+    
     # Создаём клавиатуру с WebApp кнопками
     keyboard = [
         [InlineKeyboardButton(
             "🎁 Мой вишлист",
             web_app=WebAppInfo(url=f"{WEBAPP_URL}/index.html")
+        )],
+        [InlineKeyboardButton(
+            "🎟️ Билетики",
+            web_app=WebAppInfo(url=f"{WEBAPP_URL}/tasks.html")
         )],
         [InlineKeyboardButton(
             "🎅 Тайный Санта",
@@ -81,10 +100,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Если есть параметр просмотра вишлиста
     if args and args[0].startswith('wishlist_'):
-        user_id = args[0].replace('wishlist_', '')
+        target_user_id = args[0].replace('wishlist_', '')
         keyboard.append([InlineKeyboardButton(
             "👀 Посмотреть вишлист",
-            web_app=WebAppInfo(url=f"{WEBAPP_URL}/shared.html?user={user_id}")
+            web_app=WebAppInfo(url=f"{WEBAPP_URL}/shared.html?user={target_user_id}")
         )])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -503,6 +522,42 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.inline_query.answer(results)
 
+async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Проверка подписки на канал"""
+    user = update.effective_user
+    
+    if not context.args:
+        await update.message.reply_text("Использование: /check @channel_username")
+        return
+    
+    channel = context.args[0]
+    
+    try:
+        member = await context.bot.get_chat_member(chat_id=channel, user_id=user.id)
+        status = member.status
+        
+        if status in ['member', 'administrator', 'creator']:
+            await update.message.reply_text(f"✅ Ты подписан на {channel}!")
+        else:
+            await update.message.reply_text(f"❌ Ты не подписан на {channel}")
+    except Exception as e:
+        logger.error(f"Check subscription error: {e}")
+        await update.message.reply_text(f"❌ Ошибка проверки: {e}")
+
+async def tickets_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать билетики пользователя"""
+    keyboard = [[InlineKeyboardButton(
+        "🎟️ Мои билетики",
+        web_app=WebAppInfo(url=f"{WEBAPP_URL}/tasks.html")
+    )]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "🎟️ Выполняй задания и получай билетики для розыгрыша!\n\n"
+        "Каждый билетик = 1 шанс выиграть NFT подарок 🎁",
+        reply_markup=reply_markup
+    )
+
 def main():
     """Запуск бота"""
     if BOT_TOKEN == 'YOUR_BOT_TOKEN_HERE':
@@ -521,6 +576,8 @@ def main():
     application.add_handler(CommandHandler("wishlist", wishlist_command))
     application.add_handler(CommandHandler("santa", santa_command))
     application.add_handler(CommandHandler("share", share_command))
+    application.add_handler(CommandHandler("tickets", tickets_command))
+    application.add_handler(CommandHandler("check", check_subscription))
     
     # Админские команды
     application.add_handler(CommandHandler("admin", admin_command))

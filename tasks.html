@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Giftly - Билетики</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Web Block -->
+    <div id="webBlock" style="display: none; position: fixed; inset: 0; z-index: 9999; background: linear-gradient(180deg, #e8f0f8 0%, #d4e4f0 100%); align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
+        <div style="font-size: 80px; margin-bottom: 20px;">🎟️</div>
+        <h1 style="color: #1a5a2e; font-size: 28px; margin-bottom: 16px;">Билетики</h1>
+        <p style="color: #388e3c; font-size: 16px; margin-bottom: 32px; max-width: 300px;">
+            Открой в Telegram чтобы получать билетики!
+        </p>
+        <a href="https://t.me/giftl_robot" style="background: linear-gradient(135deg, #30d158, #34c759); color: white; padding: 16px 32px; border-radius: 100px; text-decoration: none; font-weight: 600;">
+            📱 Открыть в Telegram
+        </a>
+    </div>
+
+    <!-- Ambient Background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+    </div>
+
+    <div class="app" id="mainApp">
+        <!-- Tab Bar -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <span class="nav-icon">🎁</span>
+                <span class="nav-label">Желания</span>
+            </a>
+            <a href="tasks.html" class="nav-item active">
+                <span class="nav-icon">🎟️</span>
+                <span class="nav-label">Билеты</span>
+            </a>
+            <a href="santa.html" class="nav-item">
+                <span class="nav-icon">🎅</span>
+                <span class="nav-label">Санта</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </a>
+        </nav>
+
+        <!-- Header with Tickets Count -->
+        <header class="tickets-header">
+            <div class="tickets-balance">
+                <div class="ticket-icon-big">🎟️</div>
+                <div class="tickets-info">
+                    <div class="tickets-count" id="ticketsCount">0</div>
+                    <div class="tickets-label">билетиков</div>
+                </div>
+            </div>
+            <p class="tickets-hint">Выполняй задания — получай билетики для розыгрыша!</p>
+        </header>
+
+        <!-- Prize Banner -->
+        <div class="section">
+            <div class="prize-banner">
+                <div class="prize-icon">🎁</div>
+                <div class="prize-info">
+                    <div class="prize-title">Розыгрыш NFT подарков</div>
+                    <div class="prize-desc">Каждый билетик = 1 шанс выиграть</div>
+                </div>
+                <div class="prize-timer" id="prizeTimer">3д 12ч</div>
+            </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="section">
+            <div class="section-label">📋 Задания</div>
+            <div id="tasksList" class="tasks-list">
+                <div class="task-skeleton"></div>
+                <div class="task-skeleton"></div>
+                <div class="task-skeleton"></div>
+            </div>
+        </div>
+
+        <!-- My Tickets -->
+        <div class="section">
+            <div class="section-label">🎟️ Мои билетики</div>
+            <div id="myTickets" class="tickets-grid">
+                <div class="empty-tickets">
+                    <span>Пока нет билетиков</span>
+                    <span>Выполни задание чтобы получить!</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="tasks.js"></script>
+    <script>
+        const tgCheck = window.Telegram?.WebApp;
+        if (!tgCheck || !tgCheck.initDataUnsafe?.user) {
+            document.getElementById('webBlock').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.querySelector('.bottom-nav').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

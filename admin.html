@@ -100,6 +100,38 @@
                 </div>
             </div>
 
+            <!-- Tasks Management -->
+            <div class="section">
+                <div class="section-header">🎟️ Задания за билетики</div>
+                <div class="list">
+                    <div class="list-item" onclick="openTaskModal()">
+                        <div class="list-icon gold">➕</div>
+                        <div class="list-content">
+                            <div class="list-title">Добавить задание</div>
+                            <div class="list-subtitle">Создать новое задание</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                </div>
+                <div id="tasksList" class="list" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- Raffles Management -->
+            <div class="section">
+                <div class="section-header">🎁 Розыгрыши</div>
+                <div class="list">
+                    <div class="list-item" onclick="openRaffleModal()">
+                        <div class="list-icon purple">➕</div>
+                        <div class="list-content">
+                            <div class="list-title">Создать розыгрыш</div>
+                            <div class="list-subtitle">Новый розыгрыш NFT/подарков</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                </div>
+                <div id="rafflesList" class="list" style="margin-top: 10px;"></div>
+            </div>
+
             <!-- Verify Requests -->
             <div class="section">
                 <div class="section-header">📝 Заявки на верификацию <span id="requestsCount" style="background: #c41e3a; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px;">0</span></div>
@@ -184,6 +216,103 @@
                     <div class="form-actions">
                         <button class="btn btn-secondary" onclick="closeVerifyModal()">Отмена</button>
                         <button class="btn btn-success" onclick="verifyUser()">Верифицировать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Modal -->
+        <div class="modal" id="taskModal">
+            <div class="modal-overlay" onclick="closeTaskModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>🎟️ Новое задание</h2>
+                    <button class="modal-close" onclick="closeTaskModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Тип задания</label>
+                        <select id="taskType" class="form-input">
+                            <option value="subscribe">📢 Подписка на канал</option>
+                            <option value="join_chat">💬 Вступить в чат</option>
+                            <option value="open_app">📱 Открыть мини-апп</option>
+                            <option value="daily">📅 Ежедневное</option>
+                            <option value="referral">👥 Пригласить друга</option>
+                            <option value="action">⚡ Действие в приложении</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" id="taskTitle" class="form-input" placeholder="Подпишись на канал">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <input type="text" id="taskDesc" class="form-input" placeholder="Подпишись на наш Telegram канал">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ссылка / ID канала</label>
+                        <input type="text" id="taskLink" class="form-input" placeholder="https://t.me/channel или @channel">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Награда (билетиков)</label>
+                        <input type="number" id="taskReward" class="form-input" value="3" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Иконка (эмодзи)</label>
+                        <input type="text" id="taskIcon" class="form-input" value="📢" maxlength="4">
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeTaskModal()">Отмена</button>
+                        <button class="btn btn-primary" onclick="saveTask()">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raffle Modal -->
+        <div class="modal" id="raffleModal">
+            <div class="modal-overlay" onclick="closeRaffleModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>🎁 Новый розыгрыш</h2>
+                    <button class="modal-close" onclick="closeRaffleModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" id="raffleTitle" class="form-input" placeholder="Розыгрыш NFT подарка">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание приза</label>
+                        <textarea id="raffleDesc" class="form-input" rows="3" placeholder="Уникальный NFT подарок..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Тип приза</label>
+                        <select id="rafflePrizeType" class="form-input">
+                            <option value="nft">🖼️ NFT</option>
+                            <option value="gift">🎁 Физический подарок</option>
+                            <option value="premium">⭐ Telegram Premium</option>
+                            <option value="money">💰 Денежный приз</option>
+                            <option value="other">📦 Другое</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Стоимость приза</label>
+                        <input type="text" id="rafflePrizeValue" class="form-input" placeholder="1000 ₽ или описание">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Дата окончания</label>
+                        <input type="datetime-local" id="raffleEndDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Мин. билетиков для участия</label>
+                        <input type="number" id="raffleMinTickets" class="form-input" value="1" min="1">
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeRaffleModal()">Отмена</button>
+                        <button class="btn btn-primary" onclick="saveRaffle()">Создать</button>
                     </div>
                 </div>
             </div>
@@ -652,7 +781,332 @@
             setTimeout(() => toast.classList.remove('active'), 2500);
         }
 
+        // ===== TASKS MANAGEMENT =====
+        function openTaskModal() {
+            document.getElementById('taskModal').classList.add('active');
+        }
+        
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+            // Reset form
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDesc').value = '';
+            document.getElementById('taskLink').value = '';
+            document.getElementById('taskReward').value = '3';
+            document.getElementById('taskIcon').value = '📢';
+        }
+        
+        async function saveTask() {
+            const task = {
+                id: 'task_' + Date.now(),
+                type: document.getElementById('taskType').value,
+                title: document.getElementById('taskTitle').value.trim(),
+                description: document.getElementById('taskDesc').value.trim(),
+                link: document.getElementById('taskLink').value.trim(),
+                reward: parseInt(document.getElementById('taskReward').value) || 3,
+                icon: document.getElementById('taskIcon').value || '📢',
+                active: true,
+                created_at: new Date().toISOString()
+            };
+            
+            if (!task.title) {
+                showToast('Введите название');
+                return;
+            }
+            
+            // Сохраняем в Supabase
+            if (supabase) {
+                try {
+                    await supabase.from('tasks').insert([task]);
+                } catch (err) {
+                    console.error('Save task error:', err);
+                }
+            }
+            
+            // Также в localStorage
+            const tasks = JSON.parse(localStorage.getItem('adminTasks') || '[]');
+            tasks.push(task);
+            localStorage.setItem('adminTasks', JSON.stringify(tasks));
+            
+            logActivity('task', `Создано задание: ${task.title}`);
+            showToast('✅ Задание создано');
+            closeTaskModal();
+            loadTasks();
+        }
+        
+        async function loadTasks() {
+            const list = document.getElementById('tasksList');
+            let tasks = [];
+            
+            // Загружаем из Supabase
+            if (supabase) {
+                try {
+                    const { data } = await supabase
+                        .from('tasks')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    if (data) tasks = data;
+                } catch (err) {
+                    console.error('Load tasks error:', err);
+                }
+            }
+            
+            // Fallback
+            if (tasks.length === 0) {
+                tasks = JSON.parse(localStorage.getItem('adminTasks') || '[]');
+            }
+            
+            if (tasks.length === 0) {
+                list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">Нет заданий</div>';
+                return;
+            }
+            
+            list.innerHTML = tasks.map(t => `
+                <div class="list-item">
+                    <div class="list-icon gold">${t.icon}</div>
+                    <div class="list-content">
+                        <div class="list-title">${t.title}</div>
+                        <div class="list-subtitle">+${t.reward} 🎟️ • ${t.type}</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteTask('${t.id}')" style="padding: 6px 12px; font-size: 12px;">🗑️</button>
+                </div>
+            `).join('');
+        }
+        
+        async function deleteTask(taskId) {
+            if (!confirm('Удалить задание?')) return;
+            
+            if (supabase) {
+                try {
+                    await supabase.from('tasks').delete().eq('id', taskId);
+                } catch (err) {
+                    console.error('Delete task error:', err);
+                }
+            }
+            
+            let tasks = JSON.parse(localStorage.getItem('adminTasks') || '[]');
+            tasks = tasks.filter(t => t.id !== taskId);
+            localStorage.setItem('adminTasks', JSON.stringify(tasks));
+            
+            showToast('🗑️ Задание удалено');
+            loadTasks();
+        }
+
+        // ===== RAFFLES MANAGEMENT =====
+        function openRaffleModal() {
+            document.getElementById('raffleModal').classList.add('active');
+            // Set default end date to next Sunday 20:00
+            const nextSunday = new Date();
+            nextSunday.setDate(nextSunday.getDate() + (7 - nextSunday.getDay()) % 7 || 7);
+            nextSunday.setHours(20, 0, 0, 0);
+            document.getElementById('raffleEndDate').value = nextSunday.toISOString().slice(0, 16);
+        }
+        
+        function closeRaffleModal() {
+            document.getElementById('raffleModal').classList.remove('active');
+        }
+        
+        async function saveRaffle() {
+            const raffle = {
+                id: 'raffle_' + Date.now(),
+                title: document.getElementById('raffleTitle').value.trim(),
+                description: document.getElementById('raffleDesc').value.trim(),
+                prize_type: document.getElementById('rafflePrizeType').value,
+                prize_value: document.getElementById('rafflePrizeValue').value.trim(),
+                end_date: document.getElementById('raffleEndDate').value,
+                min_tickets: parseInt(document.getElementById('raffleMinTickets').value) || 1,
+                status: 'active',
+                participants: [],
+                winner_id: null,
+                created_at: new Date().toISOString()
+            };
+            
+            if (!raffle.title) {
+                showToast('Введите название');
+                return;
+            }
+            
+            // Сохраняем в Supabase
+            if (supabase) {
+                try {
+                    await supabase.from('raffles').insert([raffle]);
+                } catch (err) {
+                    console.error('Save raffle error:', err);
+                }
+            }
+            
+            // Также в localStorage
+            const raffles = JSON.parse(localStorage.getItem('adminRaffles') || '[]');
+            raffles.push(raffle);
+            localStorage.setItem('adminRaffles', JSON.stringify(raffles));
+            
+            logActivity('raffle', `Создан розыгрыш: ${raffle.title}`);
+            showToast('🎁 Розыгрыш создан');
+            closeRaffleModal();
+            loadRaffles();
+        }
+        
+        async function loadRaffles() {
+            const list = document.getElementById('rafflesList');
+            let raffles = [];
+            
+            // Загружаем из Supabase
+            if (supabase) {
+                try {
+                    const { data } = await supabase
+                        .from('raffles')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    if (data) raffles = data;
+                } catch (err) {
+                    console.error('Load raffles error:', err);
+                }
+            }
+            
+            // Fallback
+            if (raffles.length === 0) {
+                raffles = JSON.parse(localStorage.getItem('adminRaffles') || '[]');
+            }
+            
+            if (raffles.length === 0) {
+                list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">Нет розыгрышей</div>';
+                return;
+            }
+            
+            const prizeIcons = { nft: '🖼️', gift: '🎁', premium: '⭐', money: '💰', other: '📦' };
+            const statusColors = { active: 'green', completed: 'blue', cancelled: 'red' };
+            const statusLabels = { active: 'Активен', completed: 'Завершён', cancelled: 'Отменён' };
+            
+            list.innerHTML = raffles.map(r => {
+                const endDate = new Date(r.end_date);
+                const isEnded = endDate < new Date();
+                const timeLeft = isEnded ? 'Завершён' : formatTimeLeft(endDate);
+                
+                return `
+                    <div class="list-item" style="flex-wrap: wrap; gap: 8px;">
+                        <div class="list-icon purple">${prizeIcons[r.prize_type] || '🎁'}</div>
+                        <div class="list-content" style="flex: 1; min-width: 150px;">
+                            <div class="list-title">${r.title}</div>
+                            <div class="list-subtitle">${r.prize_value || 'Приз'} • ${timeLeft}</div>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <span class="group-badge ${statusColors[r.status]}">${statusLabels[r.status]}</span>
+                            ${r.status === 'active' ? `
+                                <button class="btn btn-success" onclick="drawWinner('${r.id}')" style="padding: 6px 10px; font-size: 11px;">🎲 Розыгрыш</button>
+                            ` : ''}
+                            <button class="btn btn-danger" onclick="deleteRaffle('${r.id}')" style="padding: 6px 10px; font-size: 11px;">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function formatTimeLeft(date) {
+            const diff = date - new Date();
+            if (diff <= 0) return 'Завершён';
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            return `${days}д ${hours}ч`;
+        }
+        
+        async function drawWinner(raffleId) {
+            if (!confirm('Провести розыгрыш и выбрать победителя?')) return;
+            
+            showToast('🎲 Выбираем победителя...');
+            
+            // Получаем всех участников с билетиками
+            let participants = [];
+            
+            if (supabase) {
+                try {
+                    const { data: tickets } = await supabase
+                        .from('user_tickets')
+                        .select('user_id')
+                        .is('used_in_raffle', null);
+                    
+                    if (tickets && tickets.length > 0) {
+                        // Каждый билетик = 1 шанс
+                        participants = tickets.map(t => t.user_id);
+                    }
+                } catch (err) {
+                    console.error('Get participants error:', err);
+                }
+            }
+            
+            if (participants.length === 0) {
+                showToast('❌ Нет участников с билетиками');
+                return;
+            }
+            
+            // Выбираем случайного победителя
+            const winnerUserId = participants[Math.floor(Math.random() * participants.length)];
+            
+            // Обновляем розыгрыш
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('raffles')
+                        .update({ 
+                            status: 'completed', 
+                            winner_id: winnerUserId 
+                        })
+                        .eq('id', raffleId);
+                    
+                    // Помечаем использованные билетики
+                    await supabase
+                        .from('user_tickets')
+                        .update({ used_in_raffle: raffleId })
+                        .is('used_in_raffle', null);
+                        
+                } catch (err) {
+                    console.error('Update raffle error:', err);
+                }
+            }
+            
+            // Обновляем localStorage
+            let raffles = JSON.parse(localStorage.getItem('adminRaffles') || '[]');
+            raffles = raffles.map(r => {
+                if (r.id === raffleId) {
+                    r.status = 'completed';
+                    r.winner_id = winnerUserId;
+                }
+                return r;
+            });
+            localStorage.setItem('adminRaffles', JSON.stringify(raffles));
+            
+            logActivity('raffle', `Розыгрыш завершён! Победитель: ${winnerUserId}`);
+            showToast(`🎉 Победитель выбран!`);
+            loadRaffles();
+        }
+        
+        async function deleteRaffle(raffleId) {
+            if (!confirm('Удалить розыгрыш?')) return;
+            
+            if (supabase) {
+                try {
+                    await supabase.from('raffles').delete().eq('id', raffleId);
+                } catch (err) {
+                    console.error('Delete raffle error:', err);
+                }
+            }
+            
+            let raffles = JSON.parse(localStorage.getItem('adminRaffles') || '[]');
+            raffles = raffles.filter(r => r.id !== raffleId);
+            localStorage.setItem('adminRaffles', JSON.stringify(raffles));
+            
+            showToast('🗑️ Розыгрыш удалён');
+            loadRaffles();
+        }
+
         checkAccess();
+        
+        // Загружаем задания и розыгрыши после проверки доступа
+        setTimeout(() => {
+            if (document.getElementById('adminPanel').style.display !== 'none') {
+                loadTasks();
+                loadRaffles();
+            }
+        }, 500);
     </script>
     <script src="config.js"></script>
 </body>
