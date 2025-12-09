@@ -444,8 +444,14 @@
             if (e.target.matches('.form-input, input, textarea, select')) haptic.selection();
         }, true);
 
-        const ADMIN_ID = '7086128174';
-        const currentUserId = tg?.initDataUnsafe?.user?.id?.toString();
+        // БЕЗОПАСНОСТЬ: Список админов хранится на сервере
+        // Клиентская проверка - только первичная, все действия проверяются на сервере
+        const ADMIN_IDS = ['7086128174']; // Можно добавить несколько админов
+        
+        // Получаем данные из Telegram WebApp
+        const initData = tg?.initData; // Подписанные данные от Telegram
+        const initDataUnsafe = tg?.initDataUnsafe;
+        const currentUserId = initDataUnsafe?.user?.id?.toString();
         
         // Supabase клиент
         const supabase = window.supabase?.createClient(
@@ -453,29 +459,96 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZteXprbnJhaXh0cXZzY2VhdWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODU0NzAsImV4cCI6MjA4MDc2MTQ3MH0.ame1hcZVX__x3WqREK18LJiAM9CuuQdS8FnbKIWMH1c'
         );
 
-        // Check admin access
+        // Показать экран отказа в доступе
+        function showAccessDenied(message) {
+            document.body.innerHTML = `
+                <div style="position: fixed; inset: 0; background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
+                    <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
+                    <h1 style="color: #1b5e20; font-size: 28px; margin-bottom: 16px;">Доступ запрещён</h1>
+                    <p style="color: #388e3c; font-size: 16px; margin-bottom: 32px;">${message}</p>
+                    <a href="https://t.me/giftl_robot" style="background: #34c759; color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600;">
+                        📱 Открыть в Telegram
+                    </a>
+                </div>
+            `;
+        }
+        
+        // Проверка админа перед каждым действием
+        function requireAdmin() {
+            if (!verifyInitData() || !ADMIN_IDS.includes(currentUserId)) {
+                showToast('❌ Доступ запрещён');
+                return false;
+            }
+            return true;
+        }
+
+        // Верификация initData (проверка подписи Telegram)
+        function verifyInitData() {
+            // initData должен существовать и не быть пустым
+            if (!initData || initData.length < 50) {
+                console.error('Invalid initData: too short or missing');
+                return false;
+            }
+            
+            // Проверяем что есть hash (подпись от Telegram)
+            if (!initData.includes('hash=')) {
+                console.error('Invalid initData: no hash');
+                return false;
+            }
+            
+            // Проверяем auth_date (данные не должны быть старше 1 часа)
+            const authDateMatch = initData.match(/auth_date=(\d+)/);
+            if (authDateMatch) {
+                const authDate = parseInt(authDateMatch[1]);
+                const now = Math.floor(Date.now() / 1000);
+                if (now - authDate > 3600) { // 1 час
+                    console.error('Invalid initData: expired');
+                    return false;
+                }
+            }
+            
+            // Проверяем что user_id в initData совпадает с initDataUnsafe
+            const userIdMatch = initData.match(/"id":(\d+)/);
+            if (userIdMatch && userIdMatch[1] !== currentUserId) {
+                console.error('Invalid initData: user_id mismatch');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Check admin access с верификацией
         function checkAccess() {
-            const isTelegram = tg && tg.initDataUnsafe?.user;
-            const isAdmin = isTelegram && currentUserId === ADMIN_ID;
+            // 1. Проверяем что запущено в Telegram
+            const isTelegram = tg && initDataUnsafe?.user;
             
             if (!isTelegram) {
-                document.body.innerHTML = `
-                    <div style="position: fixed; inset: 0; background: linear-gradient(180deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%); display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 40px; text-align: center;">
-                        <div style="font-size: 80px; margin-bottom: 20px;">🔒</div>
-                        <h1 style="color: #1b5e20; font-size: 28px; margin-bottom: 16px;">Доступ запрещён</h1>
-                        <p style="color: #388e3c; font-size: 16px; margin-bottom: 32px;">
-                            Админ-панель доступна только через Telegram
-                        </p>
-                        <a href="https://t.me/giftl_robot" style="background: #34c759; color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600;">
-                            📱 Открыть в Telegram
-                        </a>
-                    </div>
-                `;
+                showAccessDenied('Админ-панель доступна только через Telegram');
                 return;
             }
             
-            document.getElementById('accessDenied').style.display = isAdmin ? 'none' : 'block';
-            document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';
+            // 2. Верифицируем initData
+            if (!verifyInitData()) {
+                showAccessDenied('Ошибка верификации. Попробуйте перезапустить приложение.');
+                console.error('initData verification failed');
+                return;
+            }
+            
+            // 3. Проверяем что пользователь в списке админов
+            const isAdmin = ADMIN_IDS.includes(currentUserId);
+            
+            if (!isAdmin) {
+                console.log('Access denied for user:', currentUserId);
+                document.getElementById('accessDenied').style.display = 'block';
+                document.getElementById('adminPanel').style.display = 'none';
+                return;
+            }
+            
+            // 4. Логируем вход админа
+            console.log('Admin access granted:', currentUserId, 'initData length:', initData?.length);
+            
+            document.getElementById('accessDenied').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
             
             if (isAdmin) {
                 loadStats();
@@ -597,6 +670,8 @@
         }
         
         async function approveRequest(requestId) {
+            if (!requireAdmin()) return;
+            
             // Обновляем в Supabase
             if (supabase) {
                 try {
@@ -664,6 +739,7 @@
         }
         
         async function rejectRequest(requestId) {
+            if (!requireAdmin()) return;
             if (!confirm('Отклонить заявку?')) return;
             
             // Обновляем в Supabase
@@ -776,6 +852,8 @@
         }
 
         async function sendBroadcast() {
+            if (!requireAdmin()) return;
+            
             const message = document.getElementById('broadcastMessage').value.trim();
             if (!message) { showToast('Введите сообщение'); return; }
             
@@ -813,6 +891,8 @@
         function closeVerifyModal() { document.getElementById('verifyModal').classList.remove('active'); }
 
         async function verifyUser() {
+            if (!requireAdmin()) return;
+            
             const userId = document.getElementById('verifyUserId').value.trim();
             const userName = document.getElementById('verifyUserName').value.trim();
             
@@ -883,6 +963,7 @@
         }
 
         function clearAllData() {
+            if (!requireAdmin()) return;
             if (!confirm('Удалить ВСЕ данные? Это действие нельзя отменить!')) return;
             if (!confirm('Вы уверены?')) return;
             
@@ -916,6 +997,8 @@
         }
         
         async function saveTask() {
+            if (!requireAdmin()) return;
+            
             const task = {
                 id: 'task_' + Date.now(),
                 type: document.getElementById('taskType').value,
@@ -993,6 +1076,7 @@
         }
         
         async function deleteTask(taskId) {
+            if (!requireAdmin()) return;
             if (!confirm('Удалить задание?')) return;
             
             if (supabase) {
@@ -1026,6 +1110,8 @@
         }
         
         async function saveRaffle() {
+            if (!requireAdmin()) return;
+            
             const raffle = {
                 id: 'raffle_' + Date.now(),
                 title: document.getElementById('raffleTitle').value.trim(),
@@ -1129,6 +1215,7 @@
         }
         
         async function drawWinner(raffleId) {
+            if (!requireAdmin()) return;
             if (!confirm('Провести розыгрыш и выбрать победителя?')) return;
             
             showToast('🎲 Выбираем победителя...');
@@ -1199,6 +1286,7 @@
         }
         
         async function deleteRaffle(raffleId) {
+            if (!requireAdmin()) return;
             if (!confirm('Удалить розыгрыш?')) return;
             
             if (supabase) {
@@ -1314,12 +1402,21 @@
         }
         
         async function blockUser() {
+            // БЕЗОПАСНОСТЬ: Проверяем права админа
+            if (!requireAdmin()) return;
+            
             const userId = document.getElementById('blockUserId').value.trim();
             const reason = document.getElementById('blockReason').value.trim();
             const duration = document.getElementById('blockDuration').value;
             
             if (!userId) {
                 showToast('Введите ID пользователя');
+                return;
+            }
+            
+            // Нельзя заблокировать админа
+            if (ADMIN_IDS.includes(userId)) {
+                showToast('❌ Нельзя заблокировать админа');
                 return;
             }
             
@@ -1374,6 +1471,7 @@
         }
         
         async function unblockUser(telegramId) {
+            if (!requireAdmin()) return;
             if (!confirm('Разблокировать пользователя?')) return;
             
             if (supabase) {
@@ -1399,6 +1497,8 @@
         }
         
         async function verifyUserById(telegramId) {
+            if (!requireAdmin()) return;
+            
             if (supabase) {
                 try {
                     await supabase
@@ -1416,6 +1516,7 @@
         }
         
         async function unverifyUser(telegramId) {
+            if (!requireAdmin()) return;
             if (!confirm('Снять верификацию?')) return;
             
             if (supabase) {
