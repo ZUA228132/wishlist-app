@@ -77,9 +77,20 @@
         if (tg) { tg.ready(); tg.expand(); }
 
         const haptic = {
+            light: () => tg?.HapticFeedback?.impactOccurred('light'),
             medium: () => tg?.HapticFeedback?.impactOccurred('medium'),
-            success: () => tg?.HapticFeedback?.notificationOccurred('success')
+            heavy: () => tg?.HapticFeedback?.impactOccurred('heavy'),
+            success: () => tg?.HapticFeedback?.notificationOccurred('success'),
+            warning: () => tg?.HapticFeedback?.notificationOccurred('warning'),
+            error: () => tg?.HapticFeedback?.notificationOccurred('error'),
+            selection: () => tg?.HapticFeedback?.selectionChanged()
         };
+        
+        // Global haptic for all interactive elements
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.btn, .card, .modal-close');
+            if (target) haptic.light();
+        }, true);
 
         const params = new URLSearchParams(window.location.search);
         const ownerTelegramId = params.get('user'); // telegram_id владельца

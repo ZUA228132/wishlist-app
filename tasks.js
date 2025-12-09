@@ -5,9 +5,22 @@ if (tg) { tg.ready(); tg.expand(); }
 const haptic = {
     light: () => tg?.HapticFeedback?.impactOccurred('light'),
     medium: () => tg?.HapticFeedback?.impactOccurred('medium'),
+    heavy: () => tg?.HapticFeedback?.impactOccurred('heavy'),
     success: () => tg?.HapticFeedback?.notificationOccurred('success'),
-    error: () => tg?.HapticFeedback?.notificationOccurred('error')
+    warning: () => tg?.HapticFeedback?.notificationOccurred('warning'),
+    error: () => tg?.HapticFeedback?.notificationOccurred('error'),
+    selection: () => tg?.HapticFeedback?.selectionChanged()
 };
+
+// Global haptic for all interactive elements
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('.nav-item, .btn, .task-card, .ticket-card, .prize-banner');
+    if (target) haptic.light();
+}, true);
+
+document.addEventListener('focus', (e) => {
+    if (e.target.matches('.form-input, input, textarea')) haptic.selection();
+}, true);
 
 const state = {
     oderId: null,
@@ -18,72 +31,50 @@ const state = {
     completedTasks: []
 };
 
-// Задания (можно потом перенести в Supabase)
-const TASKS = [
-    {
-        id: 'subscribe_channel',
-        type: 'subscribe',
-        icon: '📢',
-        title: 'Подпишись на канал',
-        description: 'Подпишись на наш Telegram канал',
-        reward: 3,
-        link: 'https://t.me/giftly_news',
-        channelId: '@giftly_news'
-    },
-    {
-        id: 'subscribe_chat',
-        type: 'subscribe',
-        icon: '💬',
-        title: 'Вступи в чат',
-        description: 'Присоединись к нашему сообществу',
-        reward: 2,
-        link: 'https://t.me/giftly_chat',
-        channelId: '@giftly_chat'
-    },
-    {
-        id: 'add_wish',
-        type: 'action',
-        icon: '🎁',
-        title: 'Добавь желание',
-        description: 'Создай своё первое желание',
-        reward: 1,
-        action: 'check_wishes'
-    },
-    {
-        id: 'share_story',
-        type: 'action',
-        icon: '📸',
-        title: 'Поделись в Stories',
-        description: 'Расскажи друзьям о своём вишлисте',
-        reward: 5,
-        action: 'share_story'
-    },
-    {
-        id: 'invite_friend',
-        type: 'referral',
-        icon: '👥',
-        title: 'Пригласи друга',
-        description: 'Друг должен добавить желание',
-        reward: 10,
-        action: 'invite'
-    },
-    {
-        id: 'daily_visit',
-        type: 'daily',
-        icon: '📅',
-        title: 'Ежедневный вход',
-        description: 'Заходи каждый день',
-        reward: 1,
-        action: 'daily'
-    }
-];
+// Задания загружаются из Supabase (добавляются через админку)
+let TASKS = [];
 
 async function init() {
+    await loadTasks();
     await loadUserData();
     renderTasks();
     renderTickets();
     updatePrizeTimer();
     setInterval(updatePrizeTimer, 60000);
+}
+
+async function loadTasks() {
+    const sb = window.supabaseClient;
+    if (!sb) {
+        // Fallback на localStorage
+        TASKS = JSON.parse(localStorage.getItem('adminTasks') || '[]').filter(t => t.active !== false);
+        return;
+    }
+
+    try {
+        const { data, error } = await sb
+            .from('tasks')
+            .select('*')
+            .eq('active', true)
+            .order('created_at', { ascending: false });
+
+        if (data && !error) {
+            TASKS = data.map(t => ({
+                id: t.id,
+                type: t.type,
+                icon: t.icon || '📋',
+                title: t.title,
+                description: t.description,
+                reward: t.reward || 1,
+                link: t.link,
+                channelId: t.link?.startsWith('@') ? t.link : (t.link?.includes('t.me/') ? '@' + t.link.split('t.me/')[1] : null),
+                action: t.type === 'daily' ? 'daily' : (t.type === 'referral' ? 'invite' : null)
+            }));
+        }
+    } catch (err) {
+        console.error('Load tasks error:', err);
+        TASKS = JSON.parse(localStorage.getItem('adminTasks') || '[]').filter(t => t.active !== false);
+    }
 }
 
 async function loadUserData() {
@@ -122,6 +113,16 @@ async function loadUserData() {
 
 function renderTasks() {
     const list = document.getElementById('tasksList');
+    
+    if (TASKS.length === 0) {
+        list.innerHTML = `
+            <div class="empty-tickets" style="padding: 30px 20px;">
+                <span>Пока нет заданий</span>
+                <span>Скоро появятся новые!</span>
+            </div>
+        `;
+        return;
+    }
     
     list.innerHTML = TASKS.map(task => {
         const isCompleted = state.completedTasks.includes(task.id);
@@ -164,12 +165,13 @@ async function startTask(taskId) {
     const task = TASKS.find(t => t.id === taskId);
     if (!task) return;
 
-    if (task.type === 'subscribe') {
-        // Открываем канал
+    if (task.type === 'subscribe' || task.type === 'join_chat') {
+        // Открываем канал/чат
+        const link = task.link?.startsWith('http') ? task.link : `https://t.me/${task.link?.replace('@', '')}`;
         if (tg) {
-            tg.openTelegramLink(task.link);
+            tg.openTelegramLink(link);
         } else {
-            window.open(task.link, '_blank');
+            window.open(link, '_blank');
         }
         
         // Показываем модалку проверки
@@ -177,27 +179,45 @@ async function startTask(taskId) {
             showVerifyModal(task);
         }, 2000);
         
+    } else if (task.type === 'open_app') {
+        // Открываем мини-апп
+        if (task.link) {
+            if (tg) {
+                tg.openTelegramLink(task.link);
+            } else {
+                window.open(task.link, '_blank');
+            }
+        }
+        // Даём награду сразу
+        await claimReward(task);
+        
     } else if (task.type === 'daily') {
         if (canClaimDailyReward()) {
             await claimReward(task);
             localStorage.setItem('lastDailyClaim', Date.now().toString());
-        }
-        
-    } else if (task.action === 'check_wishes') {
-        // Проверяем есть ли желания
-        const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
-        if (wishes.length > 0) {
-            await claimReward(task);
         } else {
-            showToast('Сначала добавь желание!');
-            setTimeout(() => location.href = 'index.html', 1000);
+            showToast('Приходи завтра!');
         }
         
-    } else if (task.action === 'share_story') {
-        location.href = 'profile.html?openStory=1&taskId=' + taskId;
-        
-    } else if (task.action === 'invite') {
+    } else if (task.type === 'referral') {
         shareInviteLink();
+        
+    } else if (task.type === 'action') {
+        // Действие в приложении - проверяем по link
+        if (task.link === 'add_wish') {
+            const wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
+            if (wishes.length > 0) {
+                await claimReward(task);
+            } else {
+                showToast('Сначала добавь желание!');
+                setTimeout(() => location.href = 'index.html', 1000);
+            }
+        } else if (task.link === 'share_story') {
+            location.href = 'profile.html?openStory=1&taskId=' + taskId;
+        } else {
+            // Просто даём награду
+            await claimReward(task);
+        }
     }
 }
 

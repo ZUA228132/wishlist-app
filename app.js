@@ -2,13 +2,34 @@
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-// Haptic
+// Haptic Feedback
 const haptic = {
     light: () => tg?.HapticFeedback?.impactOccurred('light'),
     medium: () => tg?.HapticFeedback?.impactOccurred('medium'),
+    heavy: () => tg?.HapticFeedback?.impactOccurred('heavy'),
     success: () => tg?.HapticFeedback?.notificationOccurred('success'),
-    error: () => tg?.HapticFeedback?.notificationOccurred('error')
+    warning: () => tg?.HapticFeedback?.notificationOccurred('warning'),
+    error: () => tg?.HapticFeedback?.notificationOccurred('error'),
+    selection: () => tg?.HapticFeedback?.selectionChanged()
 };
+
+// Global haptic for all interactive elements
+document.addEventListener('DOMContentLoaded', () => {
+    // Add haptic to all clickable elements
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('.nav-item, .btn, .card, .list-item, .header-btn, .modal-close, .achievement, .task-card, .ticket-card, .group-card, .participant-card, .story-type-tab, .story-template, .preset-btn, .action-sheet-cancel, .photo-upload, .privacy-option');
+        if (target) {
+            haptic.light();
+        }
+    }, true);
+    
+    // Add haptic to form inputs on focus
+    document.addEventListener('focus', (e) => {
+        if (e.target.matches('.form-input, input, textarea, select')) {
+            haptic.selection();
+        }
+    }, true);
+});
 
 // State
 const state = {

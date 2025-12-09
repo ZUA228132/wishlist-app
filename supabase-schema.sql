@@ -154,6 +154,27 @@ CREATE POLICY "Anyone can update verify request" ON verify_requests FOR UPDATE U
 -- Добавляем поле tickets в users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tickets INTEGER DEFAULT 0;
 
+-- Задания за билетики (создаются через админку)
+CREATE TABLE IF NOT EXISTS tasks (
+    id VARCHAR(100) PRIMARY KEY,
+    type VARCHAR(50) NOT NULL, -- subscribe, join_chat, open_app, daily, referral, action
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    icon VARCHAR(10) DEFAULT '📋',
+    link TEXT, -- ссылка на канал/чат/приложение
+    reward INTEGER DEFAULT 1,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_active ON tasks(active);
+
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view tasks" ON tasks FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert tasks" ON tasks FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update tasks" ON tasks FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete tasks" ON tasks FOR DELETE USING (true);
+
 -- Выполненные задания
 CREATE TABLE IF NOT EXISTS completed_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

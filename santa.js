@@ -5,8 +5,21 @@ const haptic = {
     light: () => tg?.HapticFeedback?.impactOccurred('light'),
     medium: () => tg?.HapticFeedback?.impactOccurred('medium'),
     heavy: () => tg?.HapticFeedback?.impactOccurred('heavy'),
-    success: () => tg?.HapticFeedback?.notificationOccurred('success')
+    success: () => tg?.HapticFeedback?.notificationOccurred('success'),
+    warning: () => tg?.HapticFeedback?.notificationOccurred('warning'),
+    error: () => tg?.HapticFeedback?.notificationOccurred('error'),
+    selection: () => tg?.HapticFeedback?.selectionChanged()
 };
+
+// Global haptic for all interactive elements
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('.nav-item, .btn, .group-card, .participant-card, .list-item, .modal-close');
+    if (target) haptic.light();
+}, true);
+
+document.addEventListener('focus', (e) => {
+    if (e.target.matches('.form-input, input, textarea')) haptic.selection();
+}, true);
 
 const state = {
     groups: JSON.parse(localStorage.getItem('santaGroups') || '[]'),
