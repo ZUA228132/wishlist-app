@@ -197,6 +197,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="blocked-check.js"></script>
     <script>
         // Блокировка веб-версии
         const tgCheck = window.Telegram?.WebApp;
@@ -206,6 +207,8 @@
             document.getElementById('bottomNav').style.display = 'none';
         } else {
             document.getElementById('webBlock').style.display = 'none';
+            // Проверяем блокировку
+            checkUserBlockedGlobal();
         }
     </script>
     <script src="santa.js"></script>

@@ -73,6 +73,12 @@ const DEFAULT_TASKS = [
 let TASKS = [];
 
 async function init() {
+    // Проверяем блокировку
+    if (typeof checkUserBlockedGlobal === 'function') {
+        const isBlocked = await checkUserBlockedGlobal();
+        if (isBlocked) return;
+    }
+    
     await loadTasks();
     await loadUserData();
     await loadCurrentRaffle();
