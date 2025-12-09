@@ -100,6 +100,38 @@
                 </div>
             </div>
 
+            <!-- User Management -->
+            <div class="section">
+                <div class="section-header">👥 Управление пользователями</div>
+                <div class="list">
+                    <div class="list-item" onclick="openUserSearchModal()">
+                        <div class="list-icon blue">🔍</div>
+                        <div class="list-content">
+                            <div class="list-title">Найти пользователя</div>
+                            <div class="list-subtitle">Поиск по ID или username</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                    <div class="list-item" onclick="openBlockUserModal()">
+                        <div class="list-icon red">🚫</div>
+                        <div class="list-content">
+                            <div class="list-title">Заблокировать</div>
+                            <div class="list-subtitle">Заблокировать пользователя</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                    <div class="list-item" onclick="loadBlockedUsers()">
+                        <div class="list-icon orange">📋</div>
+                        <div class="list-content">
+                            <div class="list-title">Заблокированные</div>
+                            <div class="list-subtitle">Список заблокированных</div>
+                        </div>
+                        <span class="list-arrow">›</span>
+                    </div>
+                </div>
+                <div id="blockedUsersList" class="list" style="margin-top: 10px; display: none;"></div>
+            </div>
+
             <!-- Tasks Management -->
             <div class="section">
                 <div class="section-header">🎟️ Задания за билетики</div>
@@ -313,6 +345,75 @@
                     <div class="form-actions">
                         <button class="btn btn-secondary" onclick="closeRaffleModal()">Отмена</button>
                         <button class="btn btn-primary" onclick="saveRaffle()">Создать</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Search Modal -->
+        <div class="modal" id="userSearchModal">
+            <div class="modal-overlay" onclick="closeUserSearchModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>🔍 Поиск пользователя</h2>
+                    <button class="modal-close" onclick="closeUserSearchModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Telegram ID или @username</label>
+                        <input type="text" id="userSearchQuery" class="form-input" placeholder="123456789 или @username">
+                    </div>
+                    <button class="btn btn-primary btn-large" onclick="searchUser()">Найти</button>
+                    <div id="userSearchResult" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Block User Modal -->
+        <div class="modal" id="blockUserModal">
+            <div class="modal-overlay" onclick="closeBlockUserModal()"></div>
+            <div class="modal-content">
+                <div class="modal-handle"></div>
+                <div class="modal-header">
+                    <h2>🚫 Заблокировать</h2>
+                    <button class="modal-close" onclick="closeBlockUserModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Telegram ID</label>
+                        <input type="text" id="blockUserId" class="form-input" placeholder="123456789">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Причина блокировки</label>
+                        <textarea id="blockReason" class="form-input" rows="2" placeholder="Спам, нарушение правил..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Срок блокировки</label>
+                        <select id="blockDuration" class="form-input">
+                            <option value="forever">Навсегда</option>
+                            <option value="1d">1 день</option>
+                            <option value="7d">7 дней</option>
+                            <option value="30d">30 дней</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ограничения (опционально)</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="restrictWishes"> Запретить создание желаний
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="restrictSanta"> Запретить участие в Санте
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="restrictRaffles"> Запретить участие в розыгрышах
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeBlockUserModal()">Отмена</button>
+                        <button class="btn btn-danger" onclick="blockUser()">Заблокировать</button>
                     </div>
                 </div>
             </div>
@@ -1114,6 +1215,261 @@
             
             showToast('🗑️ Розыгрыш удалён');
             loadRaffles();
+        }
+
+        // ===== USER MANAGEMENT =====
+        function openUserSearchModal() {
+            document.getElementById('userSearchModal').classList.add('active');
+            document.getElementById('userSearchResult').innerHTML = '';
+        }
+        
+        function closeUserSearchModal() {
+            document.getElementById('userSearchModal').classList.remove('active');
+        }
+        
+        function openBlockUserModal() {
+            document.getElementById('blockUserModal').classList.add('active');
+        }
+        
+        function closeBlockUserModal() {
+            document.getElementById('blockUserModal').classList.remove('active');
+        }
+        
+        async function searchUser() {
+            const query = document.getElementById('userSearchQuery').value.trim();
+            if (!query) return;
+            
+            const resultDiv = document.getElementById('userSearchResult');
+            resultDiv.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">Поиск...</div>';
+            
+            if (!supabase) {
+                resultDiv.innerHTML = '<div style="color: var(--ios-red);">База данных недоступна</div>';
+                return;
+            }
+            
+            try {
+                let user = null;
+                
+                // Поиск по telegram_id
+                if (/^\d+$/.test(query)) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('telegram_id', parseInt(query))
+                        .single();
+                    user = data;
+                } else {
+                    // Поиск по username
+                    const username = query.replace('@', '');
+                    const { data } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('username', username)
+                        .single();
+                    user = data;
+                }
+                
+                if (!user) {
+                    resultDiv.innerHTML = '<div style="color: var(--text-secondary);">Пользователь не найден</div>';
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="card" style="margin: 0;">
+                        <div class="card-body">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--ios-green); display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;">
+                                    ${user.photo_url ? `<img src="${user.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : '👤'}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600;">${user.first_name || 'Пользователь'} ${user.verified ? '✓' : ''}</div>
+                                    <div style="color: var(--text-secondary); font-size: 13px;">@${user.username || 'нет'} • ID: ${user.telegram_id}</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                                🎟️ Билетиков: ${user.tickets || 0} • 
+                                ${user.is_blocked ? '🚫 Заблокирован' : '✅ Активен'} •
+                                ${user.verified ? '✓ Верифицирован' : ''}
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                ${!user.is_blocked ? `
+                                    <button class="btn btn-danger" onclick="blockUserById('${user.telegram_id}')" style="font-size: 12px;">🚫 Заблокировать</button>
+                                ` : `
+                                    <button class="btn btn-success" onclick="unblockUser('${user.telegram_id}')" style="font-size: 12px;">✅ Разблокировать</button>
+                                `}
+                                ${!user.verified ? `
+                                    <button class="btn btn-primary" onclick="verifyUserById('${user.telegram_id}')" style="font-size: 12px;">✓ Верифицировать</button>
+                                ` : `
+                                    <button class="btn btn-secondary" onclick="unverifyUser('${user.telegram_id}')" style="font-size: 12px;">✗ Снять галочку</button>
+                                `}
+                                <button class="btn btn-secondary" onclick="window.open('public-profile.html?id=${user.telegram_id}')" style="font-size: 12px;">👤 Профиль</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                console.error('Search error:', err);
+                resultDiv.innerHTML = '<div style="color: var(--ios-red);">Ошибка поиска</div>';
+            }
+        }
+        
+        async function blockUser() {
+            const userId = document.getElementById('blockUserId').value.trim();
+            const reason = document.getElementById('blockReason').value.trim();
+            const duration = document.getElementById('blockDuration').value;
+            
+            if (!userId) {
+                showToast('Введите ID пользователя');
+                return;
+            }
+            
+            let blockedUntil = null;
+            if (duration !== 'forever') {
+                const days = parseInt(duration);
+                blockedUntil = new Date();
+                blockedUntil.setDate(blockedUntil.getDate() + days);
+            }
+            
+            const restrictions = {
+                can_create_wishes: !document.getElementById('restrictWishes').checked,
+                can_join_santa: !document.getElementById('restrictSanta').checked,
+                can_join_raffles: !document.getElementById('restrictRaffles').checked
+            };
+            
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('users')
+                        .update({
+                            is_blocked: true,
+                            blocked_reason: reason,
+                            blocked_at: new Date().toISOString(),
+                            blocked_until: blockedUntil?.toISOString() || null,
+                            restrictions: restrictions
+                        })
+                        .eq('telegram_id', parseInt(userId));
+                    
+                    // Логируем действие
+                    await supabase.from('admin_logs').insert([{
+                        admin_id: parseInt(currentUserId),
+                        action: 'block_user',
+                        target_user_id: parseInt(userId),
+                        details: { reason, duration, restrictions }
+                    }]);
+                    
+                    logActivity('block', `Заблокирован: ${userId}`);
+                    showToast('🚫 Пользователь заблокирован');
+                    closeBlockUserModal();
+                } catch (err) {
+                    console.error('Block error:', err);
+                    showToast('Ошибка блокировки');
+                }
+            }
+        }
+        
+        async function blockUserById(telegramId) {
+            document.getElementById('blockUserId').value = telegramId;
+            closeUserSearchModal();
+            openBlockUserModal();
+        }
+        
+        async function unblockUser(telegramId) {
+            if (!confirm('Разблокировать пользователя?')) return;
+            
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('users')
+                        .update({
+                            is_blocked: false,
+                            blocked_reason: null,
+                            blocked_at: null,
+                            blocked_until: null,
+                            restrictions: {}
+                        })
+                        .eq('telegram_id', parseInt(telegramId));
+                    
+                    logActivity('unblock', `Разблокирован: ${telegramId}`);
+                    showToast('✅ Пользователь разблокирован');
+                    searchUser(); // Обновляем результат
+                } catch (err) {
+                    console.error('Unblock error:', err);
+                }
+            }
+        }
+        
+        async function verifyUserById(telegramId) {
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('users')
+                        .update({ verified: true })
+                        .eq('telegram_id', parseInt(telegramId));
+                    
+                    logActivity('verify', `Верифицирован: ${telegramId}`);
+                    showToast('✓ Пользователь верифицирован');
+                    searchUser();
+                } catch (err) {
+                    console.error('Verify error:', err);
+                }
+            }
+        }
+        
+        async function unverifyUser(telegramId) {
+            if (!confirm('Снять верификацию?')) return;
+            
+            if (supabase) {
+                try {
+                    await supabase
+                        .from('users')
+                        .update({ verified: false })
+                        .eq('telegram_id', parseInt(telegramId));
+                    
+                    logActivity('unverify', `Снята верификация: ${telegramId}`);
+                    showToast('✗ Верификация снята');
+                    searchUser();
+                } catch (err) {
+                    console.error('Unverify error:', err);
+                }
+            }
+        }
+        
+        async function loadBlockedUsers() {
+            const list = document.getElementById('blockedUsersList');
+            list.style.display = 'block';
+            list.innerHTML = '<div class="list-item" style="justify-content: center;">Загрузка...</div>';
+            
+            if (!supabase) {
+                list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">База недоступна</div>';
+                return;
+            }
+            
+            try {
+                const { data: users } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('is_blocked', true)
+                    .order('blocked_at', { ascending: false });
+                
+                if (!users || users.length === 0) {
+                    list.innerHTML = '<div class="list-item" style="justify-content: center; color: var(--text-secondary);">Нет заблокированных</div>';
+                    return;
+                }
+                
+                list.innerHTML = users.map(u => `
+                    <div class="list-item" style="flex-wrap: wrap; gap: 8px;">
+                        <div class="list-icon red">🚫</div>
+                        <div class="list-content" style="flex: 1; min-width: 150px;">
+                            <div class="list-title">${u.first_name || 'Пользователь'} (@${u.username || 'нет'})</div>
+                            <div class="list-subtitle">ID: ${u.telegram_id} • ${u.blocked_reason || 'Без причины'}</div>
+                        </div>
+                        <button class="btn btn-success" onclick="unblockUser('${u.telegram_id}')" style="padding: 6px 12px; font-size: 12px;">Разблокировать</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Load blocked error:', err);
+                list.innerHTML = '<div class="list-item" style="color: var(--ios-red);">Ошибка загрузки</div>';
+            }
         }
 
         checkAccess();

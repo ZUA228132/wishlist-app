@@ -75,9 +75,9 @@ let TASKS = [];
 async function init() {
     await loadTasks();
     await loadUserData();
+    await loadCurrentRaffle();
     renderTasks();
     renderTickets();
-    updatePrizeTimer();
     setInterval(updatePrizeTimer, 60000);
 }
 
@@ -475,22 +475,95 @@ function shareInviteLink() {
     }
 }
 
-function updatePrizeTimer() {
-    // Розыгрыш каждое воскресенье в 20:00
-    const now = new Date();
-    const nextSunday = new Date();
-    nextSunday.setDate(now.getDate() + (7 - now.getDay()) % 7);
-    nextSunday.setHours(20, 0, 0, 0);
+// Текущий активный розыгрыш
+let currentRaffle = null;
+
+async function loadCurrentRaffle() {
+    const sb = window.supabaseClient;
+    const banner = document.querySelector('.prize-banner');
     
-    if (nextSunday <= now) {
-        nextSunday.setDate(nextSunday.getDate() + 7);
+    if (sb) {
+        try {
+            // Загружаем активный розыгрыш из базы
+            const { data: raffles } = await sb
+                .from('raffles')
+                .select('*')
+                .eq('status', 'active')
+                .order('end_date', { ascending: true })
+                .limit(1);
+            
+            if (raffles && raffles.length > 0) {
+                currentRaffle = raffles[0];
+                renderRaffleBanner(currentRaffle);
+                return;
+            }
+        } catch (err) {
+            console.error('Load raffle error:', err);
+        }
     }
     
-    const diff = nextSunday - now;
+    // Fallback - загружаем из localStorage
+    const localRaffles = JSON.parse(localStorage.getItem('adminRaffles') || '[]');
+    const activeRaffle = localRaffles.find(r => r.status === 'active');
+    
+    if (activeRaffle) {
+        currentRaffle = activeRaffle;
+        renderRaffleBanner(activeRaffle);
+    } else {
+        // Нет активных розыгрышей - скрываем баннер
+        if (banner) {
+            banner.innerHTML = `
+                <div class="prize-icon">🎁</div>
+                <div class="prize-info">
+                    <div class="prize-title">Скоро розыгрыш!</div>
+                    <div class="prize-desc">Копи билетики для участия</div>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderRaffleBanner(raffle) {
+    const banner = document.querySelector('.prize-banner');
+    if (!banner) return;
+    
+    const prizeIcons = { nft: '🖼️', gift: '🎁', premium: '⭐', money: '💰', other: '📦' };
+    const icon = prizeIcons[raffle.prize_type] || '🎁';
+    
+    banner.innerHTML = `
+        <div class="prize-icon">${icon}</div>
+        <div class="prize-info">
+            <div class="prize-title">${raffle.title}</div>
+            <div class="prize-desc">${raffle.prize_value || 'Приз за билетики!'}</div>
+        </div>
+        <div class="prize-timer" id="prizeTimer">--</div>
+    `;
+    
+    updatePrizeTimer();
+}
+
+function updatePrizeTimer() {
+    const timerEl = document.getElementById('prizeTimer');
+    if (!timerEl) return;
+    
+    if (!currentRaffle || !currentRaffle.end_date) {
+        timerEl.textContent = '∞';
+        return;
+    }
+    
+    const endDate = new Date(currentRaffle.end_date);
+    const now = new Date();
+    const diff = endDate - now;
+    
+    if (diff <= 0) {
+        timerEl.textContent = 'Завершён';
+        return;
+    }
+    
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     
-    document.getElementById('prizeTimer').textContent = `${days}д ${hours}ч`;
+    timerEl.textContent = `${days}д ${hours}ч`;
 }
 
 function showToast(msg) {

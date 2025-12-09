@@ -240,3 +240,70 @@ CREATE POLICY "Anyone can view raffles" ON raffles FOR SELECT USING (true);
 CREATE POLICY "Anyone can view referrals" ON referrals FOR SELECT USING (true);
 CREATE POLICY "Anyone can insert referrals" ON referrals FOR INSERT WITH CHECK (true);
 CREATE POLICY "Anyone can update referrals" ON referrals FOR UPDATE USING (true);
+
+
+-- ===== USER MANAGEMENT (блокировка/ограничения) =====
+
+-- Добавляем поля для блокировки и ограничений
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMP WITH TIME ZONE; -- NULL = навсегда
+ALTER TABLE users ADD COLUMN IF NOT EXISTS restrictions JSONB DEFAULT '{}'; -- {"can_create_wishes": false, "can_join_santa": false}
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notes TEXT; -- заметки админа
+
+-- Индекс для быстрого поиска заблокированных
+CREATE INDEX IF NOT EXISTS idx_users_blocked ON users(is_blocked);
+
+-- ===== PUBLIC PROFILES =====
+
+-- Добавляем поля для публичного профиля
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT; -- описание профиля
+ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '[]'; -- достижения
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_views INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- ===== RAFFLES IMPROVEMENTS =====
+
+-- Добавляем поля для розыгрышей
+ALTER TABLE raffles ADD COLUMN IF NOT EXISTS min_tickets INTEGER DEFAULT 1;
+ALTER TABLE raffles ADD COLUMN IF NOT EXISTS max_winners INTEGER DEFAULT 1;
+ALTER TABLE raffles ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE raffles ADD COLUMN IF NOT EXISTS participants_count INTEGER DEFAULT 0;
+
+-- Участники розыгрышей
+CREATE TABLE IF NOT EXISTS raffle_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    raffle_id UUID REFERENCES raffles(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    tickets_used INTEGER DEFAULT 1,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_winner BOOLEAN DEFAULT FALSE,
+    UNIQUE(raffle_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_raffle_participants_raffle ON raffle_participants(raffle_id);
+CREATE INDEX IF NOT EXISTS idx_raffle_participants_user ON raffle_participants(user_id);
+
+ALTER TABLE raffle_participants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view raffle_participants" ON raffle_participants FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert raffle_participants" ON raffle_participants FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update raffle_participants" ON raffle_participants FOR UPDATE USING (true);
+
+-- ===== ADMIN LOGS =====
+
+CREATE TABLE IF NOT EXISTS admin_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_id BIGINT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    target_user_id BIGINT,
+    details JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_logs_admin ON admin_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON admin_logs(action);
+
+ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view admin_logs" ON admin_logs FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert admin_logs" ON admin_logs FOR INSERT WITH CHECK (true);

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Giftly - Профиль</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="ambient-bg">
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+        <div class="ambient-orb"></div>
+    </div>
+
+    <div class="app">
+        <!-- Loading -->
+        <div id="loading" class="empty-state active" style="padding: 80px 20px;">
+            <div class="empty-icon">⏳</div>
+            <h3>Загрузка...</h3>
+        </div>
+
+        <!-- Not Found -->
+        <div id="notFound" style="display: none;">
+            <div class="empty-state active" style="padding: 80px 20px;">
+                <div class="empty-icon">😕</div>
+                <h3>Профиль не найден</h3>
+                <p>Пользователь не существует или профиль скрыт</p>
+            </div>
+        </div>
+
+        <!-- Profile -->
+        <div id="profileView" style="display: none;">
+            <header class="profile-header">
+                <div class="garland">
+                    <div class="garland-wire"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                    <div class="garland-light"></div>
+                </div>
+                <div class="profile-avatar" id="profileAvatar">
+                    <span id="avatarEmoji">🐻‍❄️</span>
+                </div>
+                <h1 class="profile-name">
+                    <span id="profileName">Пользователь</span>
+                    <span class="verified-badge" id="verifiedBadge" style="display: none;">✓</span>
+                </h1>
+                <p class="profile-username" id="profileUsername">@username</p>
+                
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="wishesCount">0</div>
+                        <div class="stat-label">Желаний</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="giftedCount">0</div>
+                        <div class="stat-label">Подарено</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Achievements -->
+            <div class="section" id="achievementsSection">
+                <div class="section-label">🏆 Достижения</div>
+                <div class="achievements-grid" id="achievementsGrid"></div>
+            </div>
+
+            <!-- Wishlist -->
+            <div class="section">
+                <div class="section-label">🎁 Вишлист</div>
+                <div id="wishesList"></div>
+                <div class="empty-state" id="emptyWishes" style="display: none;">
+                    <div class="empty-icon">📭</div>
+                    <h3>Вишлист пуст</h3>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <div class="section" style="text-align: center; padding-bottom: 40px;">
+                <a href="https://t.me/giftl_robot" class="btn btn-primary btn-large" style="display: inline-flex;">
+                    🐻‍❄️ Создать свой вишлист
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        
+        const params = new URLSearchParams(window.location.search);
+        const profileId = params.get('id'); // telegram_id
+        
+        async function init() {
+            if (!profileId) {
+                showNotFound();
+                return;
+            }
+            
+            await loadProfile();
+        }
+        
+        async function loadProfile() {
+            const sb = window.supabaseClient;
+            if (!sb) {
+                showNotFound();
+                return;
+            }
+            
+            try {
+                // Загружаем пользователя
+                const { data: user, error } = await sb
+                    .from('users')
+                    .select('*')
+                    .eq('telegram_id', parseInt(profileId))
+                    .single();
+                
+                if (error || !user) {
+                    showNotFound();
+                    return;
+                }
+                
+                // Проверяем приватность
+                if (user.privacy === 'private') {
+                    showNotFound();
+                    return;
+                }
+                
+                // Проверяем блокировку
+                if (user.is_blocked) {
+                    showNotFound();
+                    return;
+                }
+                
+                // Увеличиваем счётчик просмотров
+                await sb
+                    .from('users')
+                    .update({ profile_views: (user.profile_views || 0) + 1 })
+                    .eq('id', user.id);
+                
+                // Загружаем желания
+                const { data: wishes } = await sb
+                    .from('wishes')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+                
+                renderProfile(user, wishes || []);
+                
+            } catch (err) {
+                console.error('Load profile error:', err);
+                showNotFound();
+            }
+        }
+        
+        function renderProfile(user, wishes) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('profileView').style.display = 'block';
+            
+            // Имя и username
+            document.getElementById('profileName').textContent = user.first_name || 'Пользователь';
+            document.getElementById('profileUsername').textContent = user.username ? `@${user.username}` : '';
+            
+            // Аватар
+            if (user.photo_url) {
+                document.getElementById('avatarEmoji').style.display = 'none';
+                const img = document.createElement('img');
+                img.src = user.photo_url;
+                document.getElementById('profileAvatar').appendChild(img);
+            }
+            
+            // Галочка верификации
+            if (user.verified) {
+                document.getElementById('verifiedBadge').style.display = 'inline-flex';
+            }
+            
+            // Статистика
+            document.getElementById('wishesCount').textContent = wishes.length;
+            document.getElementById('giftedCount').textContent = wishes.filter(w => w.reserved).length;
+            
+            // Достижения
+            renderAchievements(user, wishes);
+            
+            // Вишлист
+            renderWishes(wishes);
+        }
+        
+        function renderAchievements(user, wishes) {
+            const achievements = [
+                { id: 'first', icon: '🎁', name: 'Первое', unlocked: wishes.length > 0 },
+                { id: 'ten', icon: '⭐', name: '10+', unlocked: wishes.length >= 10 },
+                { id: 'gifted', icon: '💝', name: 'Щедрый', unlocked: wishes.some(w => w.reserved) },
+                { id: 'verified', icon: '✓', name: 'VIP', unlocked: user.verified }
+            ];
+            
+            const grid = document.getElementById('achievementsGrid');
+            grid.innerHTML = achievements.map(a => `
+                <div class="achievement ${a.unlocked ? '' : 'locked'}">
+                    <div class="achievement-icon">${a.icon}</div>
+                    <div class="achievement-name">${a.name}</div>
+                </div>
+            `).join('');
+        }
+        
+        function renderWishes(wishes) {
+            const list = document.getElementById('wishesList');
+            const empty = document.getElementById('emptyWishes');
+            
+            if (wishes.length === 0) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            empty.style.display = 'none';
+            list.innerHTML = wishes.map(w => `
+                <div class="card ${w.reserved ? 'reserved' : ''}">
+                    ${w.photo_url ? `<img src="${w.photo_url}" class="card-image">` : '<div class="card-image-placeholder">🎁</div>'}
+                    <div class="card-body">
+                        <div class="card-header-row">
+                            <h3 class="card-title">${esc(w.name)}</h3>
+                            ${w.price ? `<span class="card-price">${Number(w.price).toLocaleString('ru-RU')} ${w.currency || '₽'}</span>` : ''}
+                        </div>
+                        ${w.description ? `<p class="card-subtitle">${esc(w.description)}</p>` : ''}
+                        ${w.url ? `<a href="${w.url}" target="_blank" class="card-link">🔗 Где купить</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function showNotFound() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('notFound').style.display = 'block';
+        }
+        
+        function esc(t) { 
+            const d = document.createElement('div'); 
+            d.textContent = t; 
+            return d.innerHTML; 
+        }
+        
+        init();
+    </script>
+</body>
+</html>
