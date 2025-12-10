@@ -267,11 +267,47 @@ async function loadWishes() {
                 createdAt: new Date(w.created_at).getTime()
             }));
             console.log('Loaded wishes:', state.wishes.length);
+            
+            // Подписываемся на realtime обновления желаний
+            subscribeToWishesUpdates(sb);
         }
     } catch (err) {
         console.error('Load wishes error:', err);
         state.wishes = JSON.parse(localStorage.getItem('wishes') || '[]');
     }
+}
+
+// Realtime подписка на обновления желаний
+function subscribeToWishesUpdates(sb) {
+    if (!sb || !state.userId) return;
+    
+    sb.channel('wishes-updates')
+        .on('postgres_changes', 
+            { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'wishes',
+                filter: `user_id=eq.${state.userId}`
+            }, 
+            (payload) => {
+                console.log('Wish updated:', payload);
+                const updated = payload.new;
+                
+                // Обновляем локальное состояние
+                const idx = state.wishes.findIndex(w => w.id === updated.id);
+                if (idx !== -1) {
+                    state.wishes[idx].reserved = updated.reserved;
+                    render();
+                    
+                    // Показываем уведомление если кто-то зарезервировал
+                    if (updated.reserved && !state.wishes[idx].reserved) {
+                        showToast('🎁 Кто-то хочет подарить: ' + state.wishes[idx].name);
+                        haptic.success();
+                    }
+                }
+            }
+        )
+        .subscribe();
 }
 
 function render() {

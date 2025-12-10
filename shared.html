@@ -284,17 +284,46 @@
             // Сохраняем в Supabase
             if (sb) {
                 try {
+                    // Получаем UUID текущего пользователя если он есть
+                    let reservedByUuid = null;
+                    const tgUserId = tg?.initDataUnsafe?.user?.id;
+                    
+                    if (tgUserId) {
+                        const { data: viewer } = await sb
+                            .from('users')
+                            .select('id')
+                            .eq('telegram_id', tgUserId)
+                            .single();
+                        
+                        if (viewer) {
+                            reservedByUuid = viewer.id;
+                        }
+                    }
+                    
+                    // Обновляем желание - ставим reserved = true
                     const { error } = await sb
                         .from('wishes')
-                        .update({ reserved: true, reserved_by: viewerId.toString() })
+                        .update({ 
+                            reserved: true, 
+                            reserved_by: reservedByUuid 
+                        })
                         .eq('id', selectedId);
                     
-                    console.log('Reserve result:', error);
+                    if (error) {
+                        console.error('Reserve error:', error);
+                        showToast('❌ Ошибка: ' + error.message);
+                        return;
+                    }
+                    
+                    console.log('Wish reserved successfully:', selectedId);
                 } catch (err) {
                     console.error('Reserve error:', err);
+                    showToast('❌ Ошибка при резервировании');
+                    return;
                 }
             }
             
+            // Обновляем локальное состояние
             const idx = wishes.findIndex(w => w.id === selectedId);
             if (idx !== -1) {
                 wishes[idx].reserved = true;
